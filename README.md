@@ -1,6 +1,6 @@
 # Cmdly
 
-Cmdly is an C++ project designed for creating a versatile line editor, reminiscent of popular tools like bash's readline or zsh's zle. This project is crafted to offer a seamless and interactive command-line editing experience. It supports C++17 or newer standards, ensuring compatibility with modern development practices.
+Cmdly is an C++ project designed for creating a versatile line editor, reminiscent of popular tools like bash's readline or zsh's zle. This project is crafted to offer a seamless and interactive command-line editing experience. It supports C++20 or newer standards, ensuring compatibility with modern development practices.
 
 * `Commercial-Ready`: Cmdly is open-source and free for use in commercial projects, making it an ideal choice for both personal and business applications.
 
