@@ -20,7 +20,7 @@ Cmdly empowers developers to build dynamic, customizable, command-line interface
 
 ## Planned Features 
 * bash-style search <CTRL+R>
-* word-highlighting
+* word highlighting
 * some more default key-bindings (CTRL+B, CTRL+F, etc.)
 * support for internal environment variables
 
