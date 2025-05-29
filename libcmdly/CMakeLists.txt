@@ -2,7 +2,7 @@ set(TARGET_NAME "cmdly")
 file(GLOB_RECURSE TARGET_SOURCES "src/*.cpp")
 add_library(${TARGET_NAME}_object OBJECT ${TARGET_SOURCES})
 set_property(TARGET ${TARGET_NAME}_object PROPERTY POSITION_INDEPENDENT_CODE 1)
-target_compile_options(${TARGET_NAME}_object PUBLIC -Wall -Wextra -pedantic -Werror -O3)
+target_compile_options(${TARGET_NAME}_object PUBLIC -Wall -Wextra -pedantic -O3)
 target_include_directories(${TARGET_NAME}_object
         PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         PUBLIC "$<INSTALL_INTERFACE:include>")
