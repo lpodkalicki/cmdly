@@ -143,9 +143,16 @@ public:
     void load() override
     {
         std::ifstream fp(file_path_);
+        std::vector<std::string> tmp;
+    
         for (std::string line; std::getline(fp, line);)
         {
-            insert(line);
+            tmp.push_back(line);
+        }
+        
+        for (auto it = tmp.rbegin(); it != tmp.rend(); ++it)
+        {
+            insert(*it);
         }
     }
 
