@@ -1,11 +1,10 @@
 /*
- * Copyright (c) 2023 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
+ * Copyright (c) 2023-2026 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
  */
 
 #ifndef CMDLY_HISTORY_H
 #define CMDLY_HISTORY_H
 
-#include <cstdint>
 #include <deque>
 #include <string>
 #include <fstream>

@@ -43,17 +43,17 @@ public:
     static Key PageDown;
     static Key Delete;
 
-    static Key Ctrl(char c)
+    static Key Ctrl(const char c)
     {
-        return Key(char(c - 'a' + 1));
+        return Key(static_cast<char>(c - 'a' + 1));
     }
 
-    static Key Alt(char c)
+    static Key Alt(const char c)
     {
         return Key(std::string("\033") + c);
     }
 
-    explicit Key(char code) :
+    explicit Key(const char code) :
         code_(code), special_(false)
     {}
 

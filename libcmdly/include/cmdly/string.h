@@ -1,11 +1,10 @@
 /*
- * Copyright (c) 2023 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
+ * Copyright (c) 2023-2026 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
  */
 
 #ifndef CMDLY_STRING_H
 #define CMDLY_STRING_H
 
-#include <cstdint>
 #include <string>
 #include <string_view>
 #include <regex>
@@ -16,9 +15,9 @@ namespace cmdly::string {
 template<typename T>
 static inline void format_helper(std::ostringstream &oss, std::string_view &str, const T &value)
 {
-    std::size_t openBracket = str.find('{');
+    const std::size_t openBracket = str.find('{');
     if (openBracket==std::string::npos) { return; }
-    std::size_t closeBracket = str.find('}', openBracket + 1);
+    const std::size_t closeBracket = str.find('}', openBracket + 1);
     if (closeBracket==std::string::npos) { return; }
     oss << str.substr(0, openBracket) << value;
     str = str.substr(closeBracket + 1);
@@ -33,7 +32,7 @@ static inline std::string format(std::string_view str, Targs...args)
     return oss.str();
 }
 
-static inline std::string replace(std::string& s, const std::string& search, const std::string& replace)
+static inline std::string replace(const std::string& s, const std::string& search, const std::string& replace)
 {
     return std::regex_replace(s, std::regex(search), replace);
 }

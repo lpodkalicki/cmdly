@@ -40,7 +40,7 @@ public:
         return *this;
     }
 
-    const IO &operator<<(std::uint32_t v) const
+    const IO &operator<<(const std::uint32_t v) const
     {
         write(std::to_string(v));
         return *this;
@@ -50,7 +50,7 @@ public:
 class StandardIO : public IO
 {
 public:
-    explicit StandardIO(int input_fd = STDIN_FILENO, int output_fd = STDOUT_FILENO)
+    explicit StandardIO(const int input_fd = STDIN_FILENO, const int output_fd = STDOUT_FILENO)
         : input_fd_(input_fd), output_fd_(output_fd) {}
 
     ~StandardIO() override { StandardIO::endSession(); }
@@ -162,7 +162,7 @@ private:
         StandardIO &io_;
     };
 
-    bool readByte(unsigned char &value, int timeout_ms)
+    bool readByte(unsigned char &value, const int timeout_ms) const
     {
         for (;;)
         {
@@ -217,8 +217,7 @@ public:
     }
 
     void write(const std::string &) const override
-    {
-    }
+    {}
 }; /* End of class DummyIO */
 
 } /* End of namespace cmdly */

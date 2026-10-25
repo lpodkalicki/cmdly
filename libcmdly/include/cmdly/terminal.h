@@ -1,11 +1,9 @@
 /*
- * Copyright (c) 2023 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
+ * Copyright (c) 2023-2026 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
  */
 
 #ifndef CMDLY_TERMINAL_H
 #define CMDLY_TERMINAL_H
-
-#include <iostream>
 
 #include <map>
 #include <vector>
@@ -54,11 +52,11 @@ public:
 
     void run(const std::string &prompt);
     std::string readLine(const std::string &prompt);
-    void writeText(const std::string &text, const TextStyle &text_style = TextStyle::Default);
+    void writeText(const std::string &text, const TextStyle &text_style = TextStyle::Default) const;
 
-    void bell();
-    void clearCurrentLine();
-    Terminal::Size getSize();
+    void bell() const;
+    void clearCurrentLine() const;
+    [[nodiscard]] Terminal::Size getSize() const;
 
 protected:
     std::shared_ptr<IO> io_;

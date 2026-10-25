@@ -123,7 +123,7 @@ void Terminal::run(const std::string &prompt)
     {
         auto content = readLine(prompt);
         content = string::trim(content);
-        auto cmd_status = handleLineEntered(content);
+        const auto cmd_status = handleLineEntered(content);
         if (cmd_status == LineEnteredListener::Status::CONTINUE) { continue; }
         if (cmd_status == LineEnteredListener::Status::BREAK) { break; }
     }
@@ -145,14 +145,13 @@ std::string Terminal::readLine(const std::string &prompt)
     {
         auto key = io_->getKey();
 
-        auto key_status = handleKeyPressed(key, line, cursor);
+        const auto key_status = handleKeyPressed(key, line, cursor);
         if (key_status == KeyPressedListener::Status::CONTINUE)
         {
             if (content != line.content())
             {
                 content = line.content();
-                if (handleLineChanged(content, line, cursor) == LineChangedListener::Status::BREAK)
-                    break;
+                if (handleLineChanged(content, line, cursor) == LineChangedListener::Status::BREAK) { break; }
             }
             continue;
         }
@@ -177,7 +176,7 @@ std::string Terminal::readLine(const std::string &prompt)
         if (content == line.content()) { continue; }
 
         content = line.content();
-        auto line_status = handleLineChanged(content, line, cursor);
+        const auto line_status = handleLineChanged(content, line, cursor);
         if (line_status == LineChangedListener::Status::CONTINUE) { continue; }
         if (line_status == LineChangedListener::Status::BREAK) { break; }
     }
@@ -189,7 +188,7 @@ std::string Terminal::readLine(const std::string &prompt)
     return content;
 }
 
-void Terminal::writeText(const std::string &text, const TextStyle &text_style)
+void Terminal::writeText(const std::string &text, const TextStyle &text_style) const
 {
     if (text_style == TextStyle::Default)
     {
@@ -199,17 +198,17 @@ void Terminal::writeText(const std::string &text, const TextStyle &text_style)
     *io_ << text_style.str() << text << "\033[m";
 }
 
-void Terminal::bell()
+void Terminal::bell() const
 {
     *io_ << "\a";
 }
 
-void Terminal::clearCurrentLine()
+void Terminal::clearCurrentLine() const
 {
     *io_ << "\033[K";
 }
 
-Terminal::Size Terminal::getSize()
+Terminal::Size Terminal::getSize() const
 {
     Terminal::Size terminal_size{};
     io_->getWindowSize(&terminal_size.cols, &terminal_size.rows);
@@ -218,49 +217,49 @@ Terminal::Size Terminal::getSize()
 
 void Terminal::registerDefaultKeyListeners()
 {
-    onKeyPressed(Key::Enter, [](const Key &, Line &, Cursor &cursor, Terminal &terminal) {
+    onKeyPressed(Key::Enter, [](const Key &, Line &, const Cursor &cursor, const Terminal &terminal) {
         cursor.moveToEnd();
         terminal.writeText("\n");
         return KeyPressedListener::Status::BREAK;
     });
 
-    onKeyPressed(Key::Home, [](const Key &, Line &, Cursor &cursor, Terminal &) {
+    onKeyPressed(Key::Home, [](const Key &, Line &, const Cursor &cursor, Terminal &) {
         cursor.moveToHome();
         return KeyPressedListener::Status::CONTINUE;
     });
 
-    onKeyPressed(Key::End, [](const Key &, Line &, Cursor &cursor, Terminal &) {
+    onKeyPressed(Key::End, [](const Key &, Line &, const Cursor &cursor, Terminal &) {
         cursor.moveToEnd();
         return KeyPressedListener::Status::CONTINUE;
     });
 
-    onKeyPressed(Key::ArrowLeft, [](const Key &, Line &, Cursor &cursor, Terminal &) {
+    onKeyPressed(Key::ArrowLeft, [](const Key &, Line &, const Cursor &cursor, Terminal &) {
         cursor.moveLeft();
         return KeyPressedListener::Status::CONTINUE;
     });
 
-    onKeyPressed(Key::ArrowRight, [](const Key &, Line &, Cursor &cursor, Terminal &) {
+    onKeyPressed(Key::ArrowRight, [](const Key &, Line &, const Cursor &cursor, Terminal &) {
         cursor.moveRight();
         return KeyPressedListener::Status::CONTINUE;
     });
 
-    onKeyPressed(Key::ArrowUp, [](const Key &, Line &line, Cursor &cursor, Terminal &terminal) {
-        auto history = terminal.history();
+    onKeyPressed(Key::ArrowUp, [](const Key &, Line &line, const Cursor &cursor, Terminal &terminal) {
+        const auto history = terminal.history();
         if (!history->isManipulated())
         {
             history->setTopLine(line.content());
         }
-        auto content = history->next();
+        const auto content = history->next();
         line.setContent(content);
         line.update();
         cursor.moveToEnd();
         return KeyPressedListener::Status::CONTINUE;
     });
 
-    onKeyPressed(Key::ArrowDown, [](const Key &, Line &line, Cursor &cursor, Terminal &terminal) {
+    onKeyPressed(Key::ArrowDown, [](const Key &, Line &line, const Cursor &cursor, Terminal &terminal) {
         if (terminal.history()->isManipulated())
         {
-            auto content = terminal.history()->prev();
+            const auto content = terminal.history()->prev();
             line.setContent(content);
             line.update();
             cursor.moveToEnd();
@@ -268,17 +267,17 @@ void Terminal::registerDefaultKeyListeners()
         return KeyPressedListener::Status::CONTINUE;
     });
 
-    onKeyPressed(Key::Backspace, [](const Key &, Line &, Cursor &cursor, Terminal &) {
+    onKeyPressed(Key::Backspace, [](const Key &, Line &, const Cursor &cursor, Terminal &) {
         cursor.eatChar();
         return KeyPressedListener::Status::OK;
     });
 
-    onKeyPressed(Key::Delete, [](const Key &, Line &, Cursor &cursor, Terminal &) {
+    onKeyPressed(Key::Delete, [](const Key &, Line &, const Cursor &cursor, Terminal &) {
         cursor.deleteChar();
         return KeyPressedListener::Status::OK;
     });
 
-    auto exit_listener_handler = [](const Key &, Line &line, Cursor &cursor, Terminal &terminal) {
+    auto exit_listener_handler = [](const Key &, Line &line, const Cursor &cursor, const Terminal &terminal) {
         cursor.moveToEnd();
         line.setContent("exit");
         terminal.writeText("\n");
@@ -323,9 +322,9 @@ KeyPressedListener::Status Terminal::handleKeyPressed(const Key &key, Line &line
 {
     if (key_pressed_listeners_.count(key))
     {
-        for (auto &listener : key_pressed_listeners_[key])
+        for (const auto &listener : key_pressed_listeners_[key])
         {
-            auto status = listener->invoke(key, line, cursor, *this);
+            const auto status = listener->invoke(key, line, cursor, *this);
             if (status != KeyPressedListener::Status::OK)
             {
                 return status;
@@ -335,9 +334,9 @@ KeyPressedListener::Status Terminal::handleKeyPressed(const Key &key, Line &line
 
     if (key_pressed_listeners_.count(Key::Any))
     {
-        for (auto &listener : key_pressed_listeners_[Key::Any])
+        for (const auto &listener : key_pressed_listeners_[Key::Any])
         {
-            auto status = listener->invoke(key, line, cursor, *this);
+            const auto status = listener->invoke(key, line, cursor, *this);
             if (status != KeyPressedListener::Status::OK)
             {
                 return status;
@@ -350,9 +349,9 @@ KeyPressedListener::Status Terminal::handleKeyPressed(const Key &key, Line &line
 
 LineChangedListener::Status Terminal::handleLineChanged(const std::string &content, Line &line, Cursor &cursor)
 {
-    for (auto &listener : line_changed_listeners_)
+    for (const auto &listener : line_changed_listeners_)
     {
-        auto status = listener->invoke(content, line, cursor, *this);
+        const auto status = listener->invoke(content, line, cursor, *this);
         if (status != LineChangedListener::Status::OK)
         {
             return status;
@@ -364,9 +363,9 @@ LineChangedListener::Status Terminal::handleLineChanged(const std::string &conte
 
 LineEnteredListener::Status Terminal::handleLineEntered(const std::string &content)
 {
-    for (auto &listener : line_entered_listeners_)
+    for (const auto &listener : line_entered_listeners_)
     {
-        auto status = listener->invoke(content, *this);
+        const auto status = listener->invoke(content, *this);
         if (status != LineEnteredListener::Status::OK)
         {
             return status;

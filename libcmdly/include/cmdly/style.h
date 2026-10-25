@@ -1,11 +1,10 @@
 /*
- * Copyright (c) 2023 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
+ * Copyright (c) 2023-2026 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
  */
 
 #ifndef CMDLY_STYLE_H
 #define CMDLY_STYLE_H
 
-#include <cstdint>
 #include <sstream>
 #include <iomanip>
 #include <cmdly/string.h>
@@ -36,7 +35,7 @@ struct RgbColor
         red(0), green(0), blue(0), is_default(true)
     {}
 
-    explicit RgbColor(std::uint8_t red_, std::uint8_t green_, std::uint8_t blue_) :
+    explicit RgbColor(const std::uint8_t red_, const std::uint8_t green_, const std::uint8_t blue_) :
         red(red_), green(green_), blue(blue_), is_default(false)
     {}
 
@@ -73,7 +72,7 @@ struct Color
         code(0), is_default(true)
     {}
 
-    explicit Color(std::uint8_t code_) :
+    explicit Color(const std::uint8_t code_) :
         code(code_), is_default(false)
     {}
 
@@ -138,9 +137,9 @@ public:
         }
         std::ostringstream oss;
         oss << "\033]12;#";
-        oss << std::hex << std::setfill('0') << std::setw(2) << int(color.red);
-        oss << std::hex << std::setfill('0') << std::setw(2) << int(color.green);
-        oss << std::hex << std::setfill('0') << std::setw(2) << int(color.blue);
+        oss << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(color.red);
+        oss << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(color.green);
+        oss << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(color.blue);
         oss << "\033\\";
         return oss.str();
     }
@@ -156,22 +155,23 @@ public:
     }
 
 private:
-    static std::string colorToCodeSequence(const Color &color, std::uint32_t code)
+    static std::string colorToCodeSequence(const Color &color, const std::uint32_t code)
     {
         if (color.is_default)
         {
             return "";
         }
-        return string::format("\033[{};5;{}m", code, int(color.code));
+        return string::format("\033[{};5;{}m", code, static_cast<int>(color.code));
     }
 
-    static std::string rgbColorToCodeSequence(const RgbColor &color, std::uint32_t code)
+    static std::string rgbColorToCodeSequence(const RgbColor &color, const std::uint32_t code)
     {
         if (color.is_default)
         {
             return "";
         }
-        return string::format("\033[{};2;{};{};{}m", code, int(color.red), int(color.green), int(color.blue));
+        return string::format("\033[{};2;{};{};{}m", code, static_cast<int>(color.red),
+            static_cast<int>(color.green), static_cast<int>(color.blue));
     }
 };
 
@@ -180,9 +180,9 @@ class TextStyle
 public:
     static TextStyle Default;
 
-    explicit TextStyle(Color foreground_color = Color::Default,
-                       Color background_color = Color::Default,
-                       FontStyle font_style = FontStyle::Default) :
+    explicit TextStyle(const Color foreground_color = Color::Default,
+                       const Color background_color = Color::Default,
+                       const FontStyle font_style = FontStyle::Default) :
         foreground_color_(foreground_color), background_color_(background_color), font_style_(font_style)
     {
         code_sequence_ = convertToCodeSequence();
@@ -215,7 +215,7 @@ private:
     FontStyle font_style_;
     std::string code_sequence_;
 
-    std::string convertToCodeSequence()
+    [[nodiscard]] std::string convertToCodeSequence() const
     {
         if (foreground_color_ == Color::Default && background_color_ == Color::Default
             && font_style_ == FontStyle::Default)

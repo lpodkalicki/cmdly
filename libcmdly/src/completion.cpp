@@ -23,7 +23,7 @@ void Completion::insert(const std::string& word)
     }
 }
 
-void Completion::insert(std::initializer_list<std::string> words)
+void Completion::insert(const std::initializer_list<std::string> words)
 {
     for (auto& word: words)
     {
@@ -66,8 +66,8 @@ std::shared_ptr<Completion::SearchResult> Completion::search(const std::string& 
     }
 
     // find longest common prefix
-    std::string first = result->words.front();
-    std::string last = result->words.back();
+    const std::string first = result->words.front();
+    const std::string last = result->words.back();
     std::size_t i = 0;
     for (i = 0; i < result->smallest_word_length && first[i] == last[i]; ++i)
     {}
@@ -84,7 +84,7 @@ Completion::Status Completion::invoke(const Key &key, Line &line, Cursor &cursor
         return Status::OK;
     }
 
-    auto phrase = line.content();
+    const auto phrase = line.content();
     key_tab_counter_++;
     if (key_tab_counter_ == 1 && phrase.empty())
     {
@@ -120,7 +120,7 @@ Completion::Status Completion::invoke(const Key &key, Line &line, Cursor &cursor
     return Status::OK;
 }
 
-void Completion::showSearchResult(Terminal &terminal, std::shared_ptr<Completion::SearchResult>& result)
+void Completion::showSearchResult(Terminal &terminal, const std::shared_ptr<Completion::SearchResult>& result)
 {
     if (result->empty())
     {
@@ -128,22 +128,22 @@ void Completion::showSearchResult(Terminal &terminal, std::shared_ptr<Completion
     }
 
     std::size_t line_size = 0;
-    auto terminal_size = terminal.getSize();
+    auto [cols, rows] = terminal.getSize();
 
-    const std::size_t align = 2;
+    constexpr std::size_t align = 2;
     const std::size_t word_max_length = result->longest_word_length + align;
 
     std::ostringstream oss;
     oss << std::endl;
     for (auto& keyword : result->words)
     {
-        if ((line_size + word_max_length) >= terminal_size.cols)
+        if ((line_size + word_max_length) >= cols)
         {
             oss << std::endl;
             line_size = 0;
         }
         line_size += word_max_length;
-        oss << std::left << std::setw(int(word_max_length)) << keyword;
+        oss << std::left << std::setw(static_cast<int>(word_max_length)) << keyword;
     }
     oss << std::endl;
 

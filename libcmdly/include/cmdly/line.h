@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
+ * Copyright (c) 2023-2026 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
  */
 
 #ifndef CMDLY_LINE_H
@@ -9,7 +9,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 #include <cmdly/style.h>
 #include <cmdly/io.h>
 #include <cmdly/line_renderer.h>
@@ -52,35 +51,35 @@ public:
         return prompt_;
     }
 
-    std::string content()
+    [[nodiscard]] std::string content() const
     {
         return data_.substr(prompt_.size(), data_.size());
     }
 
-    std::size_t length()
+    [[nodiscard]] std::size_t length() const
     {
         return data_.size();
     }
 
-    void remove(int index)
+    void remove(const int index)
     {
-        if (index < int(prompt_.size()) || index >= int(data_.size()))
+        if (index < static_cast<int>(prompt_.size()) || index >= static_cast<int>(data_.size()))
         {
             return;
         }
         data_.erase(data_.begin() + index);
     }
 
-    void insert(int index, char c)
+    void insert(const int index, const char c)
     {
-        if (index < int(prompt_.size()) || index > int(data_.size()))
+        if (index < static_cast<int>(prompt_.size()) || index > static_cast<int>(data_.size()))
         {
             return;
         }
         data_.insert(data_.begin() + index, c);
     }
 
-    void insertText(std::size_t offset, const std::string &text)
+    void insertText(const std::size_t offset, const std::string &text)
     {
         if (offset >= prompt_.size() && offset <= data_.size())
         {
@@ -88,7 +87,7 @@ public:
         }
     }
 
-    void removeRange(std::size_t offset, std::size_t length)
+    void removeRange(const std::size_t offset, const std::size_t length)
     {
         if (offset >= prompt_.size() && offset < data_.size())
         {
@@ -96,7 +95,7 @@ public:
         }
     }
 
-    void append(char c)
+    void append(const char c)
     {
         data_.push_back(c);
     }
@@ -111,7 +110,7 @@ public:
         data_ = prompt_ + content;
     }
 
-    void setCursorOffset(std::size_t offset, bool move = true)
+    void setCursorOffset(const std::size_t offset, const bool move = true)
     {
         const auto text = content();
         cursor_offset_ = utf8::align(text, std::min(offset, text.size()));

@@ -5,7 +5,6 @@
 #ifndef CMDLY_KEY_DECODER_H
 #define CMDLY_KEY_DECODER_H
 
-#include <cstdint>
 #include <deque>
 #include <string>
 #include <stdexcept>
@@ -17,7 +16,7 @@ namespace cmdly {
 class KeyDecoder
 {
 public:
-    void feed(std::uint8_t byte)
+    void feed(const std::uint8_t byte)
     {
         if (!utf8_sequence_.empty())
         {

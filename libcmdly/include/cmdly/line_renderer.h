@@ -23,7 +23,7 @@ public:
 
     void redraw(const std::string &prompt, const std::string &content,
                 const TextStyle &prompt_style, const TextStyle &content_style,
-                std::size_t cursor_offset)
+                const std::size_t cursor_offset)
     {
         if (!io_)
         {
@@ -55,7 +55,7 @@ public:
         moveToOffset(prompt, content, cursor_offset);
     }
 
-    void moveToOffset(const std::string &prompt, const std::string &content, std::size_t cursor_offset)
+    void moveToOffset(const std::string &prompt, const std::string &content, const std::size_t cursor_offset)
     {
         const std::size_t prompt_cells = textCells(prompt, prompt.size(), 0);
         const std::size_t cells = textCells(content, cursor_offset, prompt_cells);
@@ -86,7 +86,7 @@ private:
     std::size_t cursor_col_ = 0;
     std::size_t end_row_ = 0;
 
-    std::size_t textCells(const std::string &text, std::size_t length, std::size_t cells) const
+    [[nodiscard]] std::size_t textCells(const std::string &text, const std::size_t length, std::size_t cells) const
     {
         const std::size_t limit = std::min(length, text.size());
         for (std::size_t i = 0; i < limit;)
@@ -137,7 +137,7 @@ private:
         }
     }
 
-    void moveTo(std::size_t row, std::size_t column)
+    void moveTo(const std::size_t row, const std::size_t column)
     {
         if (!io_ || (cursor_row_ == row && cursor_col_ == column))
         {

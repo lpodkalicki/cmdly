@@ -28,7 +28,7 @@ public:
         return static_cast<std::uint32_t>(line_.cursorCol());
     }
 
-    void moveLeft()
+    void moveLeft() const
     {
         if (line_.cursorOffset() > 0)
         {
@@ -36,7 +36,7 @@ public:
         }
     }
 
-    void moveRight()
+    void moveRight() const
     {
         if (line_.cursorOffset() < line_.content().size())
         {
@@ -44,34 +44,34 @@ public:
         }
     }
 
-    void moveToHome()
+    void moveToHome() const
     {
         line_.setCursorOffset(0);
     }
 
-    void rebaseToCurrentRow()
+    void rebaseToCurrentRow() const
     {
         line_.rebaseToCurrentRow();
     }
 
-    void moveToEnd()
+    void moveToEnd() const
     {
         line_.setCursorOffset(line_.content().size());
     }
 
-    void putChar(char c)
+    void putChar(const char c)
     {
         putText(std::string(1, c));
     }
 
-    void putText(const std::string &text)
+    void putText(const std::string &text) const
     {
         line_.insertText(line_.prompt().size() + line_.cursorOffset(), text);
         line_.setCursorOffset(line_.cursorOffset() + text.size(), false);
         line_.update();
     }
 
-    void eatChar()
+    void eatChar() const
     {
         if (line_.cursorOffset() > 0)
         {
@@ -82,7 +82,7 @@ public:
         }
     }
 
-    void deleteChar()
+    void deleteChar() const
     {
         if (line_.cursorOffset() < line_.content().size())
         {

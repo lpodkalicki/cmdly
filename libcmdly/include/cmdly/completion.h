@@ -6,7 +6,6 @@
 #define CMDLY_COMPLETION_H
 
 #include <set>
-#include <cstdint>
 #include <utility>
 #include <cmdly/listener.h>
 
@@ -59,7 +58,7 @@ protected:
     std::uint16_t key_tab_counter_;
     std::uint16_t longest_word_length_;
 
-    static void showSearchResult(Terminal &terminal, std::shared_ptr<Completion::SearchResult>& result);
+    static void showSearchResult(Terminal &terminal, const std::shared_ptr<Completion::SearchResult>& result);
 }; /* End of Completion */
 
 } /* End of namespace cmdly */
