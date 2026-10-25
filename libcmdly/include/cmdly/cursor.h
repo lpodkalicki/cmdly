@@ -5,6 +5,7 @@
 #ifndef CMDLY_CURSOR_H
 #define CMDLY_CURSOR_H
 
+#include <cstdint>
 #include <memory>
 #include <cmdly/line.h>
 #include <cmdly/io.h>

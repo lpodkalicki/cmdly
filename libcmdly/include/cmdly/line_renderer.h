@@ -5,8 +5,9 @@
 #ifndef CMDLY_LINE_RENDERER_H
 #define CMDLY_LINE_RENDERER_H
 
-#include <algorithm>
+#include <cstdint>
 #include <cstddef>
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <cmdly/io.h>

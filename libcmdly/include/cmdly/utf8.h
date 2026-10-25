@@ -5,8 +5,9 @@
 #ifndef CMDLY_UTF8_H
 #define CMDLY_UTF8_H
 
-#include <algorithm>
+#include <cstdint>
 #include <cstddef>
+#include <algorithm>
 #include <string>
 
 namespace cmdly::utf8 {

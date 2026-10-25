@@ -5,12 +5,13 @@
 #ifndef CMDLY_IO_H
 #define CMDLY_IO_H
 
+#include <cstdint>
 #include <unistd.h>
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <poll.h>
-#include <string>
 #include <cerrno>
+#include <string>
 #include <cmdly/exception.h>
 #include <cmdly/key.h>
 #include <cmdly/key_decoder.h>

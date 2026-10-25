@@ -5,6 +5,7 @@
 #ifndef CMDLY_HISTORY_H
 #define CMDLY_HISTORY_H
 
+#include <cstdint>
 #include <deque>
 #include <ranges>
 #include <string>
@@ -18,7 +19,7 @@ namespace cmdly {
 class History
 {
 public:
-    explicit History(std::size_t limit) :
+    explicit History(const std::size_t limit) :
         limit_(limit), index_{-1}
     {}
 
@@ -108,7 +109,7 @@ public:
 
     const std::string& next()
     {
-        if (index_ < (int(lines_.size()) - 1))
+        if (index_ < (static_cast<int>(lines_.size()) - 1))
         {
             index_++;
         }

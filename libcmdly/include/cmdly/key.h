@@ -5,10 +5,11 @@
 #ifndef CMDLY_KEY_H
 #define CMDLY_KEY_H
 
+#include <cstdint>
+#include <cctype>
 #include <memory>
 #include <string>
 #include <sstream>
-#include <cctype>
 #include <utility>
 #include <cmdly/utf8.h>
 

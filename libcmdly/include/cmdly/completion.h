@@ -5,6 +5,7 @@
 #ifndef CMDLY_COMPLETION_H
 #define CMDLY_COMPLETION_H
 
+#include <cstdint>
 #include <set>
 #include <utility>
 #include <cmdly/listener.h>

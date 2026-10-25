@@ -5,6 +5,7 @@
 #ifndef CMDLY_STYLE_H
 #define CMDLY_STYLE_H
 
+#include <cstdint>
 #include <sstream>
 #include <iomanip>
 #include <cmdly/string.h>
