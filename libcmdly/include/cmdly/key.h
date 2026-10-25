@@ -67,6 +67,19 @@ public:
         }
     }
 
+    static Key Paste(const std::string &text)
+    {
+        Key key(0);
+        key.text_ = text;
+        key.paste_ = true;
+        return key;
+    }
+
+    [[nodiscard]] bool isPaste() const
+    {
+        return paste_;
+    }
+
     static Key Text(const std::string &text)
     {
         Key key(0);
@@ -177,6 +190,7 @@ private:
     bool special_;
     std::string sequence_;
     std::string text_;
+    bool paste_ = false;
 }; /* End of class Key */
 
 } /* End of namespace cmdly */

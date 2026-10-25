@@ -171,6 +171,25 @@ std::string Terminal::readLine(const std::string &prompt)
     {
         auto key = io_->getKey();
 
+        if (key.isPaste())
+        {
+            if (searching)
+            {
+                finishSearch(false);
+            }
+            if (!key.text().empty())
+            {
+                cursor.putText(key.text());
+                history_->rewind();
+                content = line.content();
+                if (handleLineChanged(content, line, cursor) == LineChangedListener::Status::BREAK)
+                {
+                    break;
+                }
+            }
+            continue;
+        }
+
         if (searching)
         {
             if (key == Key::Ctrl('r'))

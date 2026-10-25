@@ -82,6 +82,19 @@ public:
             throw IOError("could not enable raw terminal mode");
         }
         raw_enabled_ = true;
+        try
+        {
+            write("\033[?2004h");
+        }
+        catch (...)
+        {
+            (void)::write(output_fd_, "\033[?2004l", 8);
+            (void)::tcsetattr(input_fd_, TCSANOW, &original_);
+            decoder_.reset();
+            raw_enabled_ = false;
+            --session_depth_;
+            throw;
+        }
     }
 
     void endSession() noexcept override
@@ -92,7 +105,9 @@ public:
         }
         if (--session_depth_ == 0 && raw_enabled_)
         {
+            (void)::write(output_fd_, "\033[?2004l", 8);
             (void)::tcsetattr(input_fd_, TCSANOW, &original_);
+            decoder_.reset();
             raw_enabled_ = false;
         }
     }
@@ -107,7 +122,7 @@ public:
                 return decoder_.nextKey();
             }
             unsigned char byte = 0;
-            if (!readByte(byte, decoder_.pending() ? escape_timeout_ms_ : -1))
+            if (!readByte(byte, decoder_.pasting() ? -1 : (decoder_.pending() ? escape_timeout_ms_ : -1)))
             {
                 if (!decoder_.pending())
                 {

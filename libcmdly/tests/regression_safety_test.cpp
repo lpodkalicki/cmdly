@@ -347,3 +347,48 @@ TEST(HistorySearchRegression, MissingMatchKeepsDraft)
     EXPECT_EQ(terminal.readLine("console> "), "x");
     EXPECT_NE(io->output().find("failed reverse-i-search"), std::string::npos);
 }
+
+TEST(KeyDecoderRegression, BracketedPasteMultilineIsSingleEvent)
+{
+    cmdly::KeyDecoder decoder;
+    for (unsigned char byte : std::string("\x1b[200~first\r\nsecond\t\x1b[31m\x1b[201~"))
+    {
+        decoder.feed(byte);
+    }
+    ASSERT_TRUE(decoder.hasKey());
+    const auto key = decoder.nextKey();
+    EXPECT_TRUE(key.isPaste());
+    EXPECT_EQ(key.text(), "first  second [31m");
+    EXPECT_FALSE(decoder.hasKey());
+}
+
+TEST(KeyDecoderRegression, BracketedPasteSplitEndMarker)
+{
+    cmdly::KeyDecoder decoder;
+    for (unsigned char byte : std::string("\x1b[200~abc\x1b[20"))
+    {
+        decoder.feed(byte);
+    }
+    EXPECT_TRUE(decoder.pasting());
+    EXPECT_FALSE(decoder.hasKey());
+    for (unsigned char byte : std::string("1~z"))
+    {
+        decoder.feed(byte);
+    }
+    ASSERT_TRUE(decoder.hasKey());
+    EXPECT_EQ(decoder.nextKey().text(), "abc");
+    EXPECT_EQ(decoder.nextKey(), cmdly::Key('z'));
+}
+
+TEST(KeyDecoderRegression, IncompletePasteIsDiscarded)
+{
+    cmdly::KeyDecoder decoder;
+    for (unsigned char byte : std::string("\x1b[200~hello\n"))
+    {
+        decoder.feed(byte);
+    }
+    decoder.flush();
+    ASSERT_TRUE(decoder.hasKey());
+    EXPECT_TRUE(decoder.nextKey().isPaste());
+    EXPECT_FALSE(decoder.pasting());
+}

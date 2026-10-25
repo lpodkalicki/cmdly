@@ -19,6 +19,11 @@ class KeyDecoder
 public:
     void feed(const std::uint8_t byte)
     {
+        if (pasting_)
+        {
+            feedPaste(byte);
+            return;
+        }
         if (!utf8_sequence_.empty())
         {
             if ((byte & 0xc0) == 0x80)
@@ -104,6 +109,11 @@ public:
         return !keys_.empty();
     }
 
+    [[nodiscard]] bool pasting() const
+    {
+        return pasting_;
+    }
+
     [[nodiscard]] bool pending() const
     {
         return !sequence_.empty() || !utf8_sequence_.empty();
@@ -123,6 +133,14 @@ public:
     void flush()
     {
         utf8_sequence_.clear();
+        if (pasting_)
+        {
+            // Incomplete paste is discarded; it must never turn into an Enter event.
+            paste_data_.clear();
+            paste_end_match_.clear();
+            pasting_ = false;
+            keys_.push_back(Key::Paste(""));
+        }
         if (sequence_.empty())
         {
             return;
@@ -141,6 +159,9 @@ public:
         sequence_.clear();
         utf8_sequence_.clear();
         keys_.clear();
+        pasting_ = false;
+        paste_data_.clear();
+        paste_end_match_.clear();
     }
 
 private:
@@ -148,10 +169,46 @@ private:
     std::string utf8_sequence_;
     std::size_t utf8_expected_ = 0;
     std::deque<Key> keys_;
+    bool pasting_ = false;
+    std::string paste_data_;
+    std::string paste_end_match_;
+
+    void feedPaste(const std::uint8_t byte)
+    {
+        static const std::string end = "\x1b[201~";
+        paste_end_match_.push_back(static_cast<char>(byte));
+        while (!paste_end_match_.empty() && end.compare(0, paste_end_match_.size(), paste_end_match_) != 0)
+        {
+            const auto c = static_cast<unsigned char>(paste_end_match_.front());
+            if (c == '\r' || c == '\n' || c == '\t')
+            {
+                paste_data_.push_back(' ');
+            }
+            else if (c >= 0x20 && c != 0x7f)
+            {
+                paste_data_.push_back(static_cast<char>(c));
+            }
+            paste_end_match_.erase(0, 1);
+        }
+        if (paste_end_match_ == end)
+        {
+            keys_.push_back(Key::Paste(paste_data_));
+            pasting_ = false;
+            paste_data_.clear();
+            paste_end_match_.clear();
+        }
+    }
+
 
     void complete()
     {
-        if (sequence_ == "\x1bOA")
+        if (sequence_ == "\x1b[200~")
+        {
+            pasting_ = true;
+            paste_data_.clear();
+            paste_end_match_.clear();
+        }
+        else if (sequence_ == "\x1bOA")
         {
             keys_.push_back(Key::ArrowUp);
         }
