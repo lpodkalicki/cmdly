@@ -1,21 +1,13 @@
 /*
- * Copyright (c) 2023 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
+ * Copyright (c) 2023-2026 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
  */
 
 #ifndef CMDLY_KEY_H
 #define CMDLY_KEY_H
 
-#include <unistd.h>
-#include <termios.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
 #include <memory>
-#include <csignal>
-#include <cctype>
 #include <string>
 #include <sstream>
-#include <cmdly/string.h>
 
 namespace cmdly {
 
@@ -36,6 +28,17 @@ public:
     static Key F2;
     static Key F3;
     static Key F4;
+    static Key F5;
+    static Key F6;
+    static Key F7;
+    static Key F8;
+    static Key F9;
+    static Key F10;
+    static Key F11;
+    static Key F12;
+    static Key PageUp;
+    static Key PageDown;
+    static Key Delete;
 
     static Key Ctrl(char c)
     {
@@ -44,7 +47,7 @@ public:
 
     static Key Alt(char c)
     {
-        return Key(string::format("\033[{}", int(c)));
+        return Key(std::string("\033") + c);
     }
 
     explicit Key(char code) :

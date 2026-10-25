@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
+ * Copyright (c) 2023-2026 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
  */
 
 #ifndef CMDLY_IO_H
@@ -9,13 +9,11 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <poll.h>
-#include <cstdio>
 #include <string>
-#include <stdexcept>
-#include <cstdint>
 #include <cerrno>
 #include <cmdly/exception.h>
 #include <cmdly/key.h>
+#include <cmdly/key_decoder.h>
 
 namespace cmdly {
 
@@ -101,51 +99,24 @@ public:
     Key getKey() override
     {
         SessionGuard guard(*this);
-        unsigned char first = 0;
-        if (!readByte(first, -1))
+        for (;;)
         {
-            return Key::Ctrl('d');
-        }
-        if (first != 0x1b)
-        {
-            return Key(static_cast<char>(first));
-        }
-        unsigned char second = 0;
-        if (!readByte(second, escape_timeout_ms_))
-        {
-            return Key::Esc;
-        }
-        std::string sequence(1, '\x1b');
-        sequence.push_back(static_cast<char>(second));
-        if (second == '[')
-        {
-            for (std::size_t i = 0; i < 32; ++i)
+            if (decoder_.hasKey())
             {
-                unsigned char next = 0;
-                if (!readByte(next, escape_timeout_ms_))
-                {
-                    break;
-                }
-                sequence.push_back(static_cast<char>(next));
-                if (next >= 0x40 && next <= 0x7e) {
-                    break;
-                }
-                if (next < 0x20 || next > 0x7e)
-                {
-                    break;
-                }
+                return decoder_.nextKey();
             }
-        }
-        else if (second == 'O')
-        {
-            unsigned char next = 0;
-            if (readByte(next, escape_timeout_ms_))
+            unsigned char byte = 0;
+            if (!readByte(byte, decoder_.pending() ? escape_timeout_ms_ : -1))
             {
-                sequence.push_back(static_cast<char>(next));
+                if (!decoder_.pending())
+                {
+                    return Key::Ctrl('d');
+                }
+                decoder_.flush();
+                return decoder_.nextKey();
             }
+            decoder_.feed(byte);
         }
-
-        return Key(std::move(sequence));
     }
 
     char getChar() override
@@ -223,6 +194,7 @@ private:
         }
     }
 
+    KeyDecoder decoder_;
     int input_fd_;
     int output_fd_;
     struct termios original_{};
@@ -230,7 +202,6 @@ private:
     bool raw_enabled_ = false;
     static constexpr int escape_timeout_ms_ = 35;
 }; /* End of class StandardIO */
-
 
 class DummyIO : public IO
 {

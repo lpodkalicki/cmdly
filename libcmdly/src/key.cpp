@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
+ * Copyright (c) 2023-2026 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
  */
 
 #include <cmdly/key.h>
@@ -21,3 +21,14 @@ Key Key::F1 = Key("^OP");
 Key Key::F2 = Key("^OQ");
 Key Key::F3 = Key("^OR");
 Key Key::F4 = Key("^OS");
+Key Key::Delete = Key("^[3~");
+Key Key::PageUp = Key("^[5~");
+Key Key::PageDown = Key("^[6~");
+Key Key::F5 = Key("^[15~");
+Key Key::F6 = Key("^[17~");
+Key Key::F7 = Key("^[18~");
+Key Key::F8 = Key("^[19~");
+Key Key::F9 = Key("^[20~");
+Key Key::F10 = Key("^[21~");
+Key Key::F11 = Key("^[23~");
+Key Key::F12 = Key("^[24~");
