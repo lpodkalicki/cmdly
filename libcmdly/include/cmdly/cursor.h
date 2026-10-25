@@ -5,7 +5,6 @@
 #ifndef CMDLY_CURSOR_H
 #define CMDLY_CURSOR_H
 
-#include <cstdint>
 #include <memory>
 #include <cmdly/exception.h>
 #include <cmdly/line.h>
@@ -56,6 +55,12 @@ public:
     {
         col_ = line_.prompt().length() + 1;
         updatePosition();
+    }
+
+    void rebaseToCurrentRow()
+    {
+        readPosition();
+        col_ = line_.prompt().length() + 1;
     }
 
     void moveToEnd()

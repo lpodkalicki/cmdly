@@ -115,6 +115,7 @@ Completion::Status Completion::invoke(const Key &key, Line &line, Cursor &cursor
     else
     {
         showSearchResult(terminal, result);
+        cursor.rebaseToCurrentRow();
     }
 
     key_tab_counter_ = 0;

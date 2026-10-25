@@ -131,6 +131,12 @@ void Terminal::run(const std::string &prompt)
 
 std::string Terminal::readLine(const std::string &prompt)
 {
+    // Keep raw mode active throughout the interactive edit, even if a listener throws.
+    struct SessionScope {
+        IO &io;
+        explicit SessionScope(IO &value) : io(value) { io.beginSession(); }
+        ~SessionScope() { io.endSession(); }
+    } session(*io_);
     Line line(prompt, prompt_style_, line_style_, io_);
     Cursor cursor(line, io_);
     std::string content;
