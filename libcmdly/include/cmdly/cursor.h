@@ -8,6 +8,7 @@
 #include <memory>
 #include <cmdly/line.h>
 #include <cmdly/io.h>
+#include <cmdly/utf8.h>
 
 namespace cmdly {
 
@@ -31,7 +32,7 @@ public:
     {
         if (line_.cursorOffset() > 0)
         {
-            line_.setCursorOffset(line_.cursorOffset() - 1);
+            line_.setCursorOffset(utf8::previous(line_.content(), line_.cursorOffset()));
         }
     }
 
@@ -39,7 +40,7 @@ public:
     {
         if (line_.cursorOffset() < line_.content().size())
         {
-            line_.setCursorOffset(line_.cursorOffset() + 1);
+            line_.setCursorOffset(utf8::next(line_.content(), line_.cursorOffset()));
         }
     }
 
@@ -60,8 +61,13 @@ public:
 
     void putChar(char c)
     {
-        line_.insert(static_cast<int>(line_.prompt().size() + line_.cursorOffset()), c);
-        line_.setCursorOffset(line_.cursorOffset() + 1, false);
+        putText(std::string(1, c));
+    }
+
+    void putText(const std::string &text)
+    {
+        line_.insertText(line_.prompt().size() + line_.cursorOffset(), text);
+        line_.setCursorOffset(line_.cursorOffset() + text.size(), false);
         line_.update();
     }
 
@@ -69,8 +75,9 @@ public:
     {
         if (line_.cursorOffset() > 0)
         {
-            line_.remove(static_cast<int>(line_.prompt().size() + line_.cursorOffset() - 1));
-            line_.setCursorOffset(line_.cursorOffset() - 1, false);
+            const std::size_t start = utf8::previous(line_.content(), line_.cursorOffset());
+            line_.removeRange(line_.prompt().size() + start, line_.cursorOffset() - start);
+            line_.setCursorOffset(start, false);
             line_.update();
         }
     }
@@ -79,7 +86,8 @@ public:
     {
         if (line_.cursorOffset() < line_.content().size())
         {
-            line_.remove(static_cast<int>(line_.prompt().size() + line_.cursorOffset()));
+            const std::size_t end = utf8::next(line_.content(), line_.cursorOffset());
+            line_.removeRange(line_.prompt().size() + line_.cursorOffset(), end - line_.cursorOffset());
             line_.update();
         }
     }

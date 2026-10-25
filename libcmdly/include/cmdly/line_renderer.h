@@ -11,6 +11,7 @@
 #include <string>
 #include <cmdly/io.h>
 #include <cmdly/style.h>
+#include <cmdly/utf8.h>
 
 namespace cmdly {
 
@@ -47,17 +48,17 @@ public:
         appendText(output, content, column);
         output += std::string(Color::TERMINATOR);
 
-        end_row_ = (prompt.size() + content.size()) / columns_;
+        end_row_ = column / columns_;
         cursor_row_ = end_row_;
-        cursor_col_ = (prompt.size() + content.size()) % columns_;
+        cursor_col_ = column % columns_;
         io_->write(output);
-        moveTo((prompt.size() + std::min(cursor_offset, content.size())) / columns_,
-               (prompt.size() + std::min(cursor_offset, content.size())) % columns_);
+        moveToOffset(prompt, content, cursor_offset);
     }
 
-    void moveToOffset(std::size_t prompt_length, std::size_t cursor_offset)
+    void moveToOffset(const std::string &prompt, const std::string &content, std::size_t cursor_offset)
     {
-        const std::size_t cells = prompt_length + cursor_offset;
+        const std::size_t prompt_cells = textCells(prompt, prompt.size(), 0);
+        const std::size_t cells = textCells(content, cursor_offset, prompt_cells);
         moveTo(cells / columns_, cells % columns_);
     }
 
@@ -85,16 +86,54 @@ private:
     std::size_t cursor_col_ = 0;
     std::size_t end_row_ = 0;
 
+    std::size_t textCells(const std::string &text, std::size_t length, std::size_t cells) const
+    {
+        const std::size_t limit = std::min(length, text.size());
+        for (std::size_t i = 0; i < limit;)
+        {
+            std::uint32_t cp = 0;
+            std::size_t size = 0;
+            if (!utf8::decode(text, i, cp, size))
+            {
+                cp = 0xfffd;
+                size = 1;
+            }
+            if (i + size > limit) break;
+            const std::size_t width = utf8::width(cp);
+            if (width > 0 && cells % columns_ + width > columns_)
+            {
+                cells += columns_ - cells % columns_;
+            }
+            cells += width;
+            i += size;
+        }
+        return cells;
+    }
+
     void appendText(std::string &output, const std::string &text, std::size_t &column) const
     {
-        for (char c : text)
+        for (std::size_t i = 0; i < text.size();)
         {
-            output.push_back(c);
-            if (++column == columns_)
+            std::uint32_t cp = 0;
+            std::size_t length = 0;
+            if (!utf8::decode(text, i, cp, length))
+            {
+                cp = 0xfffd;
+                length = 1;
+            }
+            const std::size_t cells = utf8::width(cp);
+            if (cells > 0 && column % columns_ + cells > columns_)
             {
                 output += "\r\n";
-                column = 0;
+                column += columns_ - column % columns_;
             }
+            output.append(text, i, length);
+            column += cells;
+            if (cells > 0 && column % columns_ == 0)
+            {
+                output += "\r\n";
+            }
+            i += length;
         }
     }
 

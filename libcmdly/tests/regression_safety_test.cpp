@@ -168,3 +168,63 @@ TEST(LineRendererRegression, EditingWrappedLineDoesNotQueryCursorPosition)
     EXPECT_EQ(io->output.find("\033[6n"), std::string::npos);
     EXPECT_NE(io->output.find("\r\n"), std::string::npos);
 }
+
+TEST(Utf8Regression, DecoderCollectsMultiByteCharacters)
+{
+    cmdly::KeyDecoder decoder;
+    for (unsigned char byte : std::string("zażółć"))
+    {
+        decoder.feed(byte);
+    }
+    std::string result;
+    while (decoder.hasKey())
+    {
+        const auto key = decoder.nextKey();
+        result += key.text().empty() ? std::string(1, key.code()) : key.text();
+    }
+    EXPECT_EQ(result, "zażółć");
+}
+
+TEST(Utf8Regression, CursorEditsCompleteCharacters)
+{
+    auto io = std::make_shared<LineRendererCaptureIO>();
+    cmdly::Line line("p> ", cmdly::TextStyle::Default, cmdly::TextStyle::Default, io);
+    cmdly::Cursor cursor(line, io);
+    cursor.putText("zażółć");
+    EXPECT_EQ(line.cursorOffset(), std::string("zażółć").size());
+    cursor.moveLeft();
+    cursor.eatChar();
+    EXPECT_EQ(line.content(), "zażóć");
+    cursor.deleteChar();
+    EXPECT_EQ(line.content(), "zażó");
+    cursor.moveToHome();
+    cursor.moveRight();
+    cursor.putText("界");
+    EXPECT_EQ(line.content(), "z界ażó");
+    EXPECT_EQ(line.cursorCol(), 7U);
+}
+
+TEST(Utf8Regression, WrappedRendererUsesDisplayCells)
+{
+    auto io = std::make_shared<LineRendererCaptureIO>();
+    cmdly::Line line("p> ", cmdly::TextStyle::Default, cmdly::TextStyle::Default, io);
+    cmdly::Cursor cursor(line, io);
+    cursor.putText("żółć界界");
+    EXPECT_EQ(line.cursorRow(), 1U);
+    EXPECT_EQ(line.cursorCol(), 3U);
+    cursor.moveLeft();
+    EXPECT_EQ(line.cursorCol(), 10U);
+}
+
+TEST(Utf8Regression, DoubleWidthCharacterAtLineBoundary)
+{
+    auto io = std::make_shared<LineRendererCaptureIO>();
+    cmdly::Line line("p> ", cmdly::TextStyle::Default, cmdly::TextStyle::Default, io);
+    cmdly::Cursor cursor(line, io);
+    cursor.putText("abcdef界");
+    EXPECT_EQ(line.cursorRow(), 1U);
+    EXPECT_EQ(line.cursorCol(), 3U);
+    cursor.moveLeft();
+    EXPECT_EQ(line.cursorRow(), 0U);
+    EXPECT_EQ(line.cursorCol(), 10U);
+}

@@ -160,7 +160,14 @@ std::string Terminal::readLine(const std::string &prompt)
 
         if (key.isPrintable())
         {
-            cursor.putChar(key.code());
+            if (!key.text().empty())
+            {
+                cursor.putText(key.text());
+            }
+            else
+            {
+                cursor.putChar(key.code());
+            }
             if (history_->isManipulated())
             {
                 history_->rewind();

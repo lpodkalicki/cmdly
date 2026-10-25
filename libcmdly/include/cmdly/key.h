@@ -8,6 +8,9 @@
 #include <memory>
 #include <string>
 #include <sstream>
+#include <cctype>
+#include <utility>
+#include <cmdly/utf8.h>
 
 namespace cmdly {
 
@@ -63,6 +66,18 @@ public:
         }
     }
 
+    static Key Text(const std::string &text)
+    {
+        Key key(0);
+        key.text_ = text;
+        return key;
+    }
+
+    [[nodiscard]] const std::string &text() const
+    {
+        return text_;
+    }
+
     [[nodiscard]] char code() const
     {
         return code_;
@@ -80,7 +95,7 @@ public:
 
     [[nodiscard]] bool isPrintable() const
     {
-        return !special_ && std::isprint(static_cast<unsigned char>(code_));
+        return !special_ && (!text_.empty() || std::isprint(static_cast<unsigned char>(code_)));
     }
 
     [[nodiscard]] std::string str() const
@@ -89,7 +104,7 @@ public:
         {
             return sequence_;
         }
-        return std::to_string(code_);
+        return text_.empty() ? std::to_string(code_) : text_;
     }
 
     [[nodiscard]] std::string info() const
@@ -160,6 +175,7 @@ private:
     char code_;
     bool special_;
     std::string sequence_;
+    std::string text_;
 }; /* End of class Key */
 
 } /* End of namespace cmdly */

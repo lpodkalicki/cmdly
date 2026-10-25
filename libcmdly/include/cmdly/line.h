@@ -13,6 +13,7 @@
 #include <cmdly/style.h>
 #include <cmdly/io.h>
 #include <cmdly/line_renderer.h>
+#include <cmdly/utf8.h>
 
 namespace cmdly {
 
@@ -79,6 +80,22 @@ public:
         data_.insert(data_.begin() + index, c);
     }
 
+    void insertText(std::size_t offset, const std::string &text)
+    {
+        if (offset >= prompt_.size() && offset <= data_.size())
+        {
+            data_.insert(offset, text);
+        }
+    }
+
+    void removeRange(std::size_t offset, std::size_t length)
+    {
+        if (offset >= prompt_.size() && offset < data_.size())
+        {
+            data_.erase(offset, length);
+        }
+    }
+
     void append(char c)
     {
         data_.push_back(c);
@@ -96,10 +113,11 @@ public:
 
     void setCursorOffset(std::size_t offset, bool move = true)
     {
-        cursor_offset_ = std::min(offset, content().size());
+        const auto text = content();
+        cursor_offset_ = utf8::align(text, std::min(offset, text.size()));
         if (move)
         {
-            renderer_.moveToOffset(prompt_.size(), cursor_offset_);
+            renderer_.moveToOffset(prompt_, text, cursor_offset_);
         }
     }
 

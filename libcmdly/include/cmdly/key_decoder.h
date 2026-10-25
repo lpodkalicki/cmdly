@@ -10,6 +10,7 @@
 #include <string>
 #include <stdexcept>
 #include <cmdly/key.h>
+#include <cmdly/utf8.h>
 
 namespace cmdly {
 
@@ -18,6 +19,35 @@ class KeyDecoder
 public:
     void feed(std::uint8_t byte)
     {
+        if (!utf8_sequence_.empty())
+        {
+            if ((byte & 0xc0) == 0x80)
+            {
+                utf8_sequence_.push_back(static_cast<char>(byte));
+                if (utf8_sequence_.size() == utf8_expected_)
+                {
+                    std::uint32_t cp = 0;
+                    std::size_t length = 0;
+                    if (utf8::decode(utf8_sequence_, 0, cp, length))
+                    {
+                        keys_.push_back(Key::Text(utf8_sequence_));
+                    }
+                    utf8_sequence_.clear();
+                }
+                return;
+            }
+            utf8_sequence_.clear();
+        }
+        if (sequence_.empty() && byte >= 0x80)
+        {
+            utf8_expected_ = utf8::sequenceLength(byte);
+            if (utf8_expected_ > 1)
+            {
+                utf8_sequence_.assign(1, static_cast<char>(byte));
+            }
+            return;
+        }
+
         if (sequence_.empty())
         {
             if (byte == 0x1b)
@@ -76,7 +106,7 @@ public:
 
     [[nodiscard]] bool pending() const
     {
-        return !sequence_.empty();
+        return !sequence_.empty() || !utf8_sequence_.empty();
     }
 
     Key nextKey()
@@ -92,6 +122,7 @@ public:
 
     void flush()
     {
+        utf8_sequence_.clear();
         if (sequence_.empty())
         {
             return;
@@ -108,11 +139,14 @@ public:
     void reset()
     {
         sequence_.clear();
+        utf8_sequence_.clear();
         keys_.clear();
     }
 
 private:
     std::string sequence_;
+    std::string utf8_sequence_;
+    std::size_t utf8_expected_ = 0;
     std::deque<Key> keys_;
 
     void complete()
