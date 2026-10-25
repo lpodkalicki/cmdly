@@ -1,4 +1,7 @@
 #include <gtest/gtest.h>
+#include <memory>
+#include <string>
+#include <cmdly/cursor.h>
 #include <cmdly/history.h>
 #include <cmdly/key.h>
 #include <cmdly/key_decoder.h>
@@ -107,4 +110,61 @@ TEST(KeyDecoderRegression, RepeatedEscape)
     EXPECT_EQ(decoder.nextKey(), cmdly::Key::Esc);
     decoder.flush();
     EXPECT_EQ(decoder.nextKey(), cmdly::Key::Esc);
+}
+
+class LineRendererCaptureIO : public cmdly::IO
+{
+public:
+    mutable std::string output;
+
+    cmdly::Key getKey() override
+    {
+        return cmdly::Key::Enter;
+    }
+
+    char getChar() override
+    {
+        return -1;
+    }
+
+    void write(const std::string &value) const override
+    {
+        output += value;
+    }
+
+    void getWindowSize(std::size_t *cols, std::size_t *rows) const override
+    {
+        *cols = 10;
+        *rows = 24;
+    }
+}; /* End of class LineRendererCaptureIO */
+
+TEST(LineRendererRegression, EditingWrappedLineDoesNotQueryCursorPosition)
+{
+    auto io = std::make_shared<LineRendererCaptureIO>();
+    cmdly::Line line("p> ", cmdly::TextStyle::Default, cmdly::TextStyle::Default, io);
+    cmdly::Cursor cursor(line, io);
+    EXPECT_EQ(io->output.find("\033[6n"), std::string::npos);
+
+    for (char c : std::string("abcdefghijk"))
+    {
+        cursor.putChar(c);
+    }
+    EXPECT_EQ(line.content(), "abcdefghijk");
+    EXPECT_EQ(line.cursorRow(), 1U);
+    EXPECT_EQ(line.cursorCol(), 5U);
+
+    cursor.moveToHome();
+    EXPECT_EQ(line.cursorOffset(), 0U);
+    cursor.moveRight();
+    cursor.putChar('Z');
+    EXPECT_EQ(line.content(), "aZbcdefghijk");
+    cursor.eatChar();
+    EXPECT_EQ(line.content(), "abcdefghijk");
+    cursor.deleteChar();
+    EXPECT_EQ(line.content(), "acdefghijk");
+    cursor.moveToEnd();
+    EXPECT_EQ(line.cursorOffset(), line.content().size());
+    EXPECT_EQ(io->output.find("\033[6n"), std::string::npos);
+    EXPECT_NE(io->output.find("\r\n"), std::string::npos);
 }

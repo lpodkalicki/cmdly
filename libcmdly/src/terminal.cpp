@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
+ * Copyright (c) 2023-2026 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
  */
 
 #include <cmdly/terminal.h>
@@ -211,7 +211,8 @@ Terminal::Size Terminal::getSize()
 
 void Terminal::registerDefaultKeyListeners()
 {
-    onKeyPressed(Key::Enter, [](const Key &, Line &, Cursor &, Terminal &terminal) {
+    onKeyPressed(Key::Enter, [](const Key &, Line &, Cursor &cursor, Terminal &terminal) {
+        cursor.moveToEnd();
         terminal.writeText("\n");
         return KeyPressedListener::Status::BREAK;
     });
@@ -265,7 +266,13 @@ void Terminal::registerDefaultKeyListeners()
         return KeyPressedListener::Status::OK;
     });
 
-    auto exit_listener_handler = [](const Key &, Line &line, Cursor &, Terminal &terminal) {
+    onKeyPressed(Key::Delete, [](const Key &, Line &, Cursor &cursor, Terminal &) {
+        cursor.deleteChar();
+        return KeyPressedListener::Status::OK;
+    });
+
+    auto exit_listener_handler = [](const Key &, Line &line, Cursor &cursor, Terminal &terminal) {
+        cursor.moveToEnd();
         line.setContent("exit");
         terminal.writeText("\n");
         return KeyPressedListener::Status::BREAK;

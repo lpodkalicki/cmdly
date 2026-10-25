@@ -5,12 +5,14 @@
 #ifndef CMDLY_LINE_H
 #define CMDLY_LINE_H
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 #include <cmdly/style.h>
 #include <cmdly/io.h>
+#include <cmdly/line_renderer.h>
 
 namespace cmdly {
 
@@ -24,7 +26,7 @@ public:
         prompt_(prompt),
         prompt_style_(std::move(prompt_style)),
         content_style_(std::move(content_style)),
-        io_(io)
+        io_(io), renderer_(io)
     {
         update();
     }
@@ -92,20 +94,38 @@ public:
         data_ = prompt_ + content;
     }
 
+    void setCursorOffset(std::size_t offset, bool move = true)
+    {
+        cursor_offset_ = std::min(offset, content().size());
+        if (move)
+        {
+            renderer_.moveToOffset(prompt_.size(), cursor_offset_);
+        }
+    }
+
+    [[nodiscard]] std::size_t cursorOffset() const
+    {
+        return cursor_offset_;
+    }
+
+    [[nodiscard]] std::size_t cursorRow() const
+    {
+        return renderer_.row();
+    }
+
+    [[nodiscard]] std::size_t cursorCol() const
+    {
+        return renderer_.col();
+    }
+
+    void rebaseToCurrentRow()
+    {
+        renderer_.rebase();
+    }
+
     void update()
     {
-        *io_ << "\r";
-        *io_ << prompt_style_.str() << prompt_ << std::string(Color::TERMINATOR);
-        *io_ << content_style_.str() << content();
-        if (data_.size() < old_len_)
-        {
-            for (std::size_t i = 0; i < (old_len_ - data_.size()); i++)
-            {
-                *io_ << " ";
-            }
-        }
-        *io_ << std::string(Color::TERMINATOR);
-        old_len_ = data_.size();
+        renderer_.redraw(prompt_, content(), prompt_style_, content_style_, cursor_offset_);
     }
 
 protected:
@@ -114,7 +134,8 @@ protected:
     TextStyle prompt_style_;
     TextStyle content_style_;
     std::shared_ptr<IO> io_;
-    std::size_t old_len_{0};
+    LineRenderer renderer_{nullptr};
+    std::size_t cursor_offset_ = 0;
 }; /* End of class Line */
 
 } /* End of namespace cmdly */

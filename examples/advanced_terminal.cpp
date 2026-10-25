@@ -22,8 +22,10 @@ int main()
     terminal->setLineStyle(TextStyle(Color::Blue));
     terminal->setCursorStyle(CursorStyle(RgbColor::Red));
 
-    terminal->onKeyPressed(Key::Ctrl('h'), [](const Key &, Line &line, Cursor &, Terminal &terminal) {
+    terminal->onKeyPressed(Key::Ctrl('h'), [](const Key &, Line &line, Cursor &cursor, Terminal &terminal) {
+        cursor.moveToEnd();
         terminal.writeText("\nhello!\n", TextStyle(Color::Red));
+        line.rebaseToCurrentRow();
         line.update();
         return KeyPressedListener::Status::CONTINUE;
     });

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
+ * Copyright (c) 2023-2026 by Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
  */
 
 #include <cmdly/key.h>
@@ -100,22 +100,17 @@ Completion::Status Completion::invoke(const Key &key, Line &line, Cursor &cursor
 
     if (result->size() == 1)
     {
-        const std::string first_word = result->words.front();
-        line.setContent(first_word);
-    }
-    else if (!result->longest_common_prefix.empty())
-    {
-        line.setContent(result->longest_common_prefix);
-    }
-
-    if (result->size() == 1)
-    {
-        line.append(" ");
+        line.setContent(result->words.front() + " ");
     }
     else
     {
+        cursor.moveToEnd();
         showSearchResult(terminal, result);
         cursor.rebaseToCurrentRow();
+        if (!result->longest_common_prefix.empty())
+        {
+            line.setContent(result->longest_common_prefix);
+        }
     }
 
     key_tab_counter_ = 0;
