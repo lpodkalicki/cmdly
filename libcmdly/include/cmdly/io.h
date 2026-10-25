@@ -88,11 +88,12 @@ public:
         }
         catch (...)
         {
-            (void)::write(output_fd_, "\033[?2004l", 8);
-            (void)::tcsetattr(input_fd_, TCSANOW, &original_);
-            decoder_.reset();
-            raw_enabled_ = false;
+            const bool restored = restoreTerminal();
             --session_depth_;
+            if (!restored)
+            {
+                // Record or report terminal restoration failure.
+            }
             throw;
         }
     }
@@ -105,10 +106,11 @@ public:
         }
         if (--session_depth_ == 0 && raw_enabled_)
         {
-            (void)::write(output_fd_, "\033[?2004l", 8);
-            (void)::tcsetattr(input_fd_, TCSANOW, &original_);
-            decoder_.reset();
-            raw_enabled_ = false;
+            const bool restored = restoreTerminal();
+            if (!restored)
+            {
+                // Record or report terminal restoration failure.
+            }
         }
     }
 
@@ -152,19 +154,9 @@ public:
 
     void write(const std::string &data) const override
     {
-        std::size_t written = 0;
-        while (written < data.size())
+        if (!safeWrite(data.data(), data.size()))
         {
-            const auto count = ::write(output_fd_, data.data() + written, data.size() - written);
-            if (count < 0 && errno == EINTR)
-            {
-                continue;
-            }
-            if (count <= 0)
-            {
-                throw IOError("could not write data");
-            }
-            written += static_cast<std::size_t>(count);
+            throw IOError("could not write data");
         }
     }
 
@@ -208,6 +200,36 @@ private:
             }
             throw IOError("could not read terminal input");
         }
+    }
+
+    bool safeWrite(const char *data, const std::size_t size) const noexcept
+    {
+        std::size_t written = 0;
+        while (written < size)
+        {
+            const auto count = ::write(output_fd_, data + written, size - written);
+            if (count < 0 && errno == EINTR)
+            {
+                continue;
+            }
+            if (count <= 0)
+            {
+                return false;
+            }
+            written += static_cast<std::size_t>(count);
+        }
+        return true;
+    }
+
+    bool restoreTerminal() noexcept
+    {
+        const bool paste_disabled = safeWrite("\033[?2004l", 8);
+        const bool attributes_restored = (::tcsetattr(input_fd_, TCSANOW, &original_) == 0);
+
+        decoder_.reset();
+        raw_enabled_ = !attributes_restored;
+
+        return paste_disabled && attributes_restored;
     }
 
     KeyDecoder decoder_;
