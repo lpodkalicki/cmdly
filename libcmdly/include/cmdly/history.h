@@ -11,6 +11,7 @@
 #include <fstream>
 #include <filesystem>
 #include <utility>
+#include <vector>
 
 namespace cmdly {
 
@@ -25,7 +26,7 @@ public:
 
     void insert(const std::string &line)
     {
-        if (line.empty())
+        if (limit_ == 0 || line.empty())
         {
             return;
         }
@@ -65,6 +66,8 @@ public:
     void clear()
     {
         lines_.clear();
+        rewind();
+        top_line_.clear();
     }
 
     void rewind()

@@ -7,7 +7,7 @@
 
 #include <unistd.h>
 #include <cstdint>
-#include <cstdint>
+#include <cerrno>
 #include <cmdly/exception.h>
 #include <cmdly/key.h>
 
@@ -51,8 +51,13 @@ public:
         char buf[16] = {0};
         ::fflush(stdout);
         enterRawMode();
-        auto len = read(STDIN_FILENO, buf, sizeof(buf));
+        const auto len = ::read(STDIN_FILENO, buf, sizeof(buf));
+        const int saved_errno = errno;
         exitRawMode();
+        if (len < 0 && saved_errno == EINTR)
+        {
+            return getKey();
+        }
         if (len <= 0)
         {
             return Key::Ctrl('d');
@@ -109,7 +114,11 @@ public:
         while (bytes_written < data.length())
         {
             ssize_t retval = ::write(STDOUT_FILENO, data.c_str() + bytes_written, data.length() - bytes_written);
-            if (retval < 0)
+            if (retval < 0 && errno == EINTR)
+            {
+                continue;
+            }
+            if (retval <= 0)
             {
                 throw IOError("could not write data");
             }

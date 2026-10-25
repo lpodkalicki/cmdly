@@ -140,7 +140,16 @@ std::string Terminal::readLine(const std::string &prompt)
         auto key = io_->getKey();
 
         auto key_status = handleKeyPressed(key, line, cursor);
-        if (key_status == KeyPressedListener::Status::CONTINUE) { continue; }
+        if (key_status == KeyPressedListener::Status::CONTINUE)
+        {
+            if (content != line.content())
+            {
+                content = line.content();
+                if (handleLineChanged(content, line, cursor) == LineChangedListener::Status::BREAK)
+                    break;
+            }
+            continue;
+        }
         if (key_status == KeyPressedListener::Status::BREAK) { break; }
 
         if (key.isPrintable())

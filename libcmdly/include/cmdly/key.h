@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <memory>
 #include <csignal>
+#include <cctype>
 #include <string>
 #include <sstream>
 #include <cmdly/string.h>
@@ -53,7 +54,7 @@ public:
     explicit Key(std::string sequence) :
         code_(0), special_(true), sequence_(std::move(sequence))
     {
-        if (sequence_[0] == '^')
+        if (!sequence_.empty() && sequence_[0] == '^')
         {
             sequence_[0] = '\033';
         }
@@ -76,7 +77,7 @@ public:
 
     [[nodiscard]] bool isPrintable() const
     {
-        return !special_ && std::isprint(code_);
+        return !special_ && std::isprint(static_cast<unsigned char>(code_));
     }
 
     [[nodiscard]] std::string str() const
@@ -98,7 +99,7 @@ public:
             oss << "sequence=\"";
             for (auto& c : sequence_)
             {
-                if (std::isprint(c))
+                if (std::isprint(static_cast<unsigned char>(c)))
                 {
                     oss << c;
                 }
@@ -116,7 +117,7 @@ public:
         else
         {
             oss << "code=\"";
-            if (std::isprint(code_))
+            if (std::isprint(static_cast<unsigned char>(code_)))
             {
                 oss << code_;
             }
