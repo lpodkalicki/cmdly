@@ -33,7 +33,7 @@ int main()
         {
             terminal.writeText("Allowed commands:\n");
             terminal.writeText("  help - show this help\n");
-            terminal.writeText("  exit - quit terminal\n ");
+            terminal.writeText("  exit - quit terminal\n");
             return LineEnteredListener::Status::CONTINUE;
         }
         return LineEnteredListener::Status::OK;
