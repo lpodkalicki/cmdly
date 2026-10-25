@@ -6,6 +6,7 @@
 #define CMDLY_HISTORY_H
 
 #include <deque>
+#include <ranges>
 #include <string>
 #include <fstream>
 #include <filesystem>
@@ -67,6 +68,18 @@ public:
         lines_.clear();
         rewind();
         top_line_.clear();
+    }
+
+    [[nodiscard]] std::size_t find(const std::string &query, const std::size_t start = 0) const
+    {
+        for (std::size_t i = start; i < lines_.size(); ++i)
+        {
+            if (lines_[i].find(query) != std::string::npos)
+            {
+                return i;
+            }
+        }
+        return lines_.size();
     }
 
     void rewind()
@@ -138,7 +151,7 @@ public:
 class FileHistory : public History
 {
 public:
-    explicit FileHistory(std::filesystem::path file_path, std::size_t limit = 128) :
+    explicit FileHistory(std::filesystem::path file_path, const std::size_t limit = 128) :
         History(limit), file_path_(std::move(file_path))
     {}
 
@@ -152,9 +165,9 @@ public:
             tmp.push_back(line);
         }
         
-        for (auto it = tmp.rbegin(); it != tmp.rend(); ++it)
+        for (auto & it : std::views::reverse(tmp))
         {
-            insert(*it);
+            insert(it);
         }
     }
 

@@ -3,6 +3,7 @@
  */
 
 #include <cmdly/terminal.h>
+#include <cmdly/utf8.h>
 
 using namespace cmdly;
 
@@ -140,10 +141,105 @@ std::string Terminal::readLine(const std::string &prompt)
     Line line(prompt, prompt_style_, line_style_, io_);
     Cursor cursor(line, io_);
     std::string content;
+    bool searching = false;
+    std::string search_query;
+    std::string saved_content;
+    std::size_t saved_offset = 0;
+    std::size_t search_index = 0;
+
+    const auto refreshSearch = [&]() {
+        const bool found = search_index < history_->length();
+        const std::string search_prompt = std::string(found ? "(reverse-i-search)`" : "(failed reverse-i-search)`") +
+                                          search_query + "': ";
+        line.setPrompt(search_prompt);
+        line.setContent(found ? history_->lines()[search_index] : "");
+        line.setCursorOffset(line.content().size(), false);
+        line.update();
+    };
+
+    const auto finishSearch = [&](const bool accept) {
+        searching = false;
+        const std::string selected = line.content();
+        line.setPrompt(prompt);
+        line.setContent(accept && search_index < history_->length() ? selected : saved_content);
+        line.setCursorOffset(accept && search_index < history_->length() ? line.content().size() : saved_offset, false);
+        line.update();
+        history_->rewind();
+    };
 
     for (;;)
     {
         auto key = io_->getKey();
+
+        if (searching)
+        {
+            if (key == Key::Ctrl('r'))
+            {
+                const std::size_t next = search_index < history_->length() ?
+                                         history_->find(search_query, search_index + 1) : history_->length();
+                if (next < history_->length() && next != search_index)
+                {
+                    search_index = next;
+                    refreshSearch();
+                }
+                else
+                {
+                    bell();
+                }
+                continue;
+            }
+            if (key == Key::Backspace)
+            {
+                if (!search_query.empty())
+                {
+                    search_query.erase(utf8::previous(search_query, search_query.size()));
+                    search_index = history_->find(search_query);
+                    refreshSearch();
+                }
+                else
+                {
+                    bell();
+                }
+                continue;
+            }
+            if (key == Key::Esc || key == Key::Ctrl('g') || key == Key::Ctrl('c'))
+            {
+                finishSearch(false);
+                continue;
+            }
+            if (key == Key::Enter || key == Key::ArrowLeft || key == Key::ArrowRight ||
+                key == Key::Home || key == Key::End)
+            {
+                finishSearch(true);
+                if (key != Key::Enter)
+                {
+                    continue;
+                }
+            }
+            else if (key.isPrintable())
+            {
+                const std::string text = key.text().empty() ? std::string(1, key.code()) : key.text();
+                search_query += text;
+                search_index = history_->find(search_query);
+                refreshSearch();
+                continue;
+            }
+            else
+            {
+                bell();
+                continue;
+            }
+        }
+        else if (key == Key::Ctrl('r'))
+        {
+            searching = true;
+            saved_content = line.content();
+            saved_offset = line.cursorOffset();
+            search_query.clear();
+            search_index = history_->find(search_query);
+            refreshSearch();
+            continue;
+        }
 
         const auto key_status = handleKeyPressed(key, line, cursor);
         if (key_status == KeyPressedListener::Status::CONTINUE)

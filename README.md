@@ -13,13 +13,21 @@ Cmdly empowers developers to build dynamic, customizable, command-line interface
 ## Features
 * key reading (ascii sequence codes) and key binding to function
 * line reading and line editing
-* history (in-memory or file-based)
+* history (in-memory or file-based) with incremental reverse search (CTRL+R)
 * basic auto-completion
 * event emitting such as key-pressed, line-changed, line-entered
-* support colourful prompt (text style, cursor style)
+* support colorful prompt (text style, cursor style)
+
+## History Search
+
+Press `Ctrl+R` while editing a line to search command history from newest to oldest.
+Typing filters the history incrementally. Press `Ctrl+R` again for the next older match,
+`Backspace` to edit the search query, `Enter` to execute the selected command,
+or an arrow key to accept it for editing. Press `Esc`, `Ctrl+G` or `Ctrl+C`
+to cancel and restore the unfinished line. Search is enabled by default for every
+`Terminal` instance.
 
 ## Planned Features 
-* bash-style search <CTRL+R>
 * word highlighting
 * some more default key-bindings (CTRL+B, CTRL+F, etc.)
 * support for internal environment variables

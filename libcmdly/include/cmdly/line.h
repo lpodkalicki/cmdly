@@ -36,6 +36,13 @@ public:
         prompt_style_ = text_style;
     }
 
+    void setPrompt(const std::string &prompt)
+    {
+        const auto text = content();
+        prompt_ = prompt;
+        data_ = prompt_ + text;
+    }
+
     void setContentStyle(const TextStyle& text_style)
     {
         content_style_ = text_style;

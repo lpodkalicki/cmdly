@@ -5,6 +5,8 @@
 #include <cmdly/history.h>
 #include <cmdly/key.h>
 #include <cmdly/key_decoder.h>
+#include <cmdly/terminal.h>
+#include <deque>
 
 TEST(SafetyRegression, EmptySpecialKeySequence) {
     const cmdly::Key key(std::string{});
@@ -227,4 +229,121 @@ TEST(Utf8Regression, DoubleWidthCharacterAtLineBoundary)
     cursor.moveLeft();
     EXPECT_EQ(line.cursorRow(), 0U);
     EXPECT_EQ(line.cursorCol(), 10U);
+}
+
+class HistorySearchIO : public cmdly::IO
+{
+public:
+    explicit HistorySearchIO(std::deque<cmdly::Key> keys) : keys_(std::move(keys))
+    {}
+
+    cmdly::Key getKey() override
+    {
+        const auto key = keys_.front();
+        keys_.pop_front();
+        return key;
+    }
+
+    char getChar() override
+    {
+        return 0;
+    }
+
+    void write(const std::string &data) const override
+    {
+        output_ += data;
+    }
+
+    void getWindowSize(std::size_t *cols, std::size_t *rows) const override
+    {
+        *cols = 80;
+        *rows = 24;
+    }
+
+    [[nodiscard]] const std::string &output() const
+    {
+        return output_;
+    }
+
+private:
+    std::deque<cmdly::Key> keys_;
+    mutable std::string output_;
+}; /* End of class HistorySearchIO */
+
+TEST(HistorySearchRegression, FindMatchesFromNewest)
+{
+    cmdly::MemoryHistory history;
+    history.insert("git status");
+    history.insert("make build");
+    history.insert("git push");
+
+    EXPECT_EQ(history.find("git"), 0U);
+    EXPECT_EQ(history.find("git", 1), 2U);
+    EXPECT_EQ(history.find("missing"), history.length());
+}
+
+TEST(HistorySearchRegression, AcceptMostRecentMatch)
+{
+    auto history = std::make_shared<cmdly::MemoryHistory>();
+    history->insert("git status");
+    history->insert("make build");
+    history->insert("git push");
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key::Ctrl('r'), cmdly::Key('g'), cmdly::Key('i'), cmdly::Key('t'), cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io, history);
+    EXPECT_EQ(terminal.readLine("console> "), "git push");
+    EXPECT_NE(io->output().find("(reverse-i-search)`git': "), std::string::npos);
+    EXPECT_NE(io->output().find("git push"), std::string::npos);
+}
+
+TEST(HistorySearchRegression, RepeatSearchSelectsOlderMatch)
+{
+    auto history = std::make_shared<cmdly::MemoryHistory>();
+    history->insert("git status");
+    history->insert("make build");
+    history->insert("git push");
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key::Ctrl('r'), cmdly::Key('g'), cmdly::Key('i'), cmdly::Key('t'),
+        cmdly::Key::Ctrl('r'), cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io, history);
+    EXPECT_EQ(terminal.readLine("console> "), "git status");
+}
+
+TEST(HistorySearchRegression, CancelRestoresDraft)
+{
+    auto history = std::make_shared<cmdly::MemoryHistory>();
+    history->insert("git push");
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('d'), cmdly::Key('r'), cmdly::Key::Ctrl('r'), cmdly::Key('g'),
+        cmdly::Key::Esc, cmdly::Key('a'), cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io, history);
+    EXPECT_EQ(terminal.readLine("console> "), "dra");
+}
+
+TEST(HistorySearchRegression, BackspaceAndUtf8Query)
+{
+    auto history = std::make_shared<cmdly::MemoryHistory>();
+    history->insert("zażółć");
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key::Ctrl('r'), cmdly::Key::Text("ż"), cmdly::Key::Backspace,
+        cmdly::Key::Text("ó"), cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io, history);
+    EXPECT_EQ(terminal.readLine("console> "), "zażółć");
+}
+
+TEST(HistorySearchRegression, MissingMatchKeepsDraft)
+{
+    auto history = std::make_shared<cmdly::MemoryHistory>();
+    history->insert("git push");
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('x'), cmdly::Key::Ctrl('r'), cmdly::Key('z'),
+        cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io, history);
+    EXPECT_EQ(terminal.readLine("console> "), "x");
+    EXPECT_NE(io->output().find("failed reverse-i-search"), std::string::npos);
 }
