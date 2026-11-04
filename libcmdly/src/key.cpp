@@ -10,6 +10,7 @@ Key Key::Any = Key(-1);
 Key Key::Tab = Key(9);
 Key Key::Enter = Key(13);
 Key Key::Esc = Key(27);
+Key Key::EndOfFile = Key("EOF");
 Key Key::Backspace = Key(127);
 Key Key::ArrowUp = Key("^[A");
 Key Key::ArrowDown = Key("^[B");

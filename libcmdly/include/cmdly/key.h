@@ -21,6 +21,7 @@ public:
     static Key Tab;
     static Key Enter;
     static Key Esc;
+    static Key EndOfFile;
     static Key Backspace;
     static Key ArrowUp;
     static Key ArrowDown;

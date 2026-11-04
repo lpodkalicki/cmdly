@@ -42,6 +42,12 @@ TEST(KeyDecoderRegression, ConsecutiveKeys)
     EXPECT_FALSE(decoder.hasKey());
 }
 
+TEST(KeyDecoderRegression, EndOfFileIsNotCtrlD)
+{
+    EXPECT_NE(cmdly::Key::EndOfFile, cmdly::Key::Ctrl('d'));
+    EXPECT_NE(cmdly::Key::EndOfFile, cmdly::Key::Esc);
+}
+
 TEST(KeyDecoderRegression, EscapeTimeout)
 {
     cmdly::KeyDecoder decoder;

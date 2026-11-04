@@ -124,14 +124,16 @@ public:
                 return decoder_.nextKey();
             }
             unsigned char byte = 0;
-            if (!readByte(byte, decoder_.pasting() ? -1 : (decoder_.pending() ? escape_timeout_ms_ : -1)))
+            const auto result = readByte(byte, decoder_.pasting() ? -1 : (decoder_.pending() ? escape_timeout_ms_ : -1));
+            if (result != ReadResult::Byte)
             {
-                if (!decoder_.pending())
+                if (decoder_.pending() || (result == ReadResult::EndOfFile && decoder_.pasting()))
                 {
-                    return Key::Ctrl('d');
+                    decoder_.flush();
+                    if (decoder_.hasKey()) return decoder_.nextKey();
                 }
-                decoder_.flush();
-                return decoder_.nextKey();
+                if (result == ReadResult::EndOfFile) return Key::EndOfFile;
+                continue;
             }
             decoder_.feed(byte);
         }
@@ -141,7 +143,7 @@ public:
     {
         SessionGuard guard(*this);
         unsigned char value = 0;
-        return readByte(value, -1) ? static_cast<char>(value) : static_cast<char>(-1);
+        return readByte(value, -1) == ReadResult::Byte ? static_cast<char>(value) : static_cast<char>(-1);
     }
 
     void getWindowSize(std::size_t *cols, std::size_t *rows) const override
@@ -161,6 +163,8 @@ public:
     }
 
 private:
+    enum class ReadResult { Byte, Timeout, EndOfFile };
+
     class SessionGuard
     {
     public:
@@ -170,7 +174,7 @@ private:
         StandardIO &io_;
     };
 
-    bool readByte(unsigned char &value, const int timeout_ms) const
+    ReadResult readByte(unsigned char &value, const int timeout_ms) const
     {
         for (;;)
         {
@@ -178,7 +182,7 @@ private:
             const int ready = ::poll(&pfd, 1, timeout_ms);
             if (ready == 0)
             {
-                return false;
+                return ReadResult::Timeout;
             }
             if (ready < 0)
             {
@@ -188,11 +192,11 @@ private:
             const auto count = ::read(input_fd_, &value, 1);
             if (count == 1)
             {
-                return true;
+                return ReadResult::Byte;
             }
             if (count == 0)
             {
-                return false;
+                return ReadResult::EndOfFile;
             }
             if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
             {

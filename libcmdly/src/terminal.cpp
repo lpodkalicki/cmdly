@@ -400,6 +400,7 @@ void Terminal::registerDefaultKeyListeners()
     };
     onKeyPressed(Key::Ctrl('c'), exit_listener_handler);
     onKeyPressed(Key::Ctrl('d'), exit_listener_handler);
+    onKeyPressed(Key::EndOfFile, exit_listener_handler);
     addKeyPressedListener(Key::Tab, completion_);
 }
 
