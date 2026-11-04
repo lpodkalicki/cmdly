@@ -359,6 +359,47 @@ private:
     mutable std::string output_;
 }; /* End of class HistorySearchIO */
 
+TEST(TerminalRegression, CtrlCCancelsLineWithoutSavingHistory)
+{
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('a'), cmdly::Key::Ctrl('c'), cmdly::Key('b'), cmdly::Key::Enter
+    });
+    auto history = std::make_shared<cmdly::MemoryHistory>();
+    cmdly::Terminal terminal(io, history);
+    const auto canceled = terminal.readLineWithStatus("p> ");
+    EXPECT_EQ(canceled.status, cmdly::Terminal::ReadLineStatus::Interrupted);
+    EXPECT_TRUE(canceled.text.empty());
+    EXPECT_EQ(history->length(), 0U);
+    const auto accepted = terminal.readLineWithStatus("p> ");
+    EXPECT_EQ(accepted.status, cmdly::Terminal::ReadLineStatus::Accepted);
+    EXPECT_EQ(accepted.text, "b");
+}
+
+TEST(TerminalRegression, CtrlDDeletesCharacterOrSignalsEOF)
+{
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('a'), cmdly::Key('b'), cmdly::Key::ArrowLeft,
+        cmdly::Key::Ctrl('d'), cmdly::Key::Enter, cmdly::Key::Ctrl('d')
+    });
+    cmdly::Terminal terminal(io);
+    const auto accepted = terminal.readLineWithStatus("p> ");
+    EXPECT_EQ(accepted.status, cmdly::Terminal::ReadLineStatus::Accepted);
+    EXPECT_EQ(accepted.text, "a");
+    const auto eof = terminal.readLineWithStatus("p> ");
+    EXPECT_EQ(eof.status, cmdly::Terminal::ReadLineStatus::EndOfFile);
+    EXPECT_TRUE(terminal.endOfInput());
+}
+
+TEST(TerminalRegression, StreamEOFIsNotAnExitCommand)
+{
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{cmdly::Key::EndOfFile});
+    cmdly::Terminal terminal(io);
+    const auto result = terminal.readLineWithStatus("p> ");
+    EXPECT_EQ(result.status, cmdly::Terminal::ReadLineStatus::EndOfFile);
+    EXPECT_TRUE(result.text.empty());
+    EXPECT_EQ(terminal.history()->length(), 0U);
+}
+
 TEST(HistorySearchRegression, FindMatchesFromNewest)
 {
     cmdly::MemoryHistory history;

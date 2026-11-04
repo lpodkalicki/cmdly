@@ -122,9 +122,10 @@ void Terminal::run(const std::string &prompt)
 {
     for (;;)
     {
-        auto content = readLine(prompt);
-        if (input_eof_ && content.empty()) break;
-        content = string::trim(content);
+        auto result = readLineWithStatus(prompt);
+        if (result.status == ReadLineStatus::EndOfFile) break;
+        if (result.status == ReadLineStatus::Interrupted) continue;
+        auto content = string::trim(result.text);
         const auto cmd_status = handleLineEntered(content);
         if (cmd_status == LineEnteredListener::Status::CONTINUE) { continue; }
         if (cmd_status == LineEnteredListener::Status::BREAK) { break; }
@@ -133,9 +134,14 @@ void Terminal::run(const std::string &prompt)
 
 std::string Terminal::readLine(const std::string &prompt)
 {
+    return readLineWithStatus(prompt).text;
+}
+
+Terminal::ReadLineResult Terminal::readLineWithStatus(const std::string &prompt)
+{
     if (!io_->isInteractive())
     {
-        if (input_eof_) return "";
+        if (input_eof_) return {ReadLineStatus::EndOfFile, ""};
         std::string content;
         for (;;)
         {
@@ -153,7 +159,8 @@ std::string Terminal::readLine(const std::string &prompt)
         }
         history_->insert(content);
         history_->rewind();
-        return content;
+        if (input_eof_ && content.empty()) return {ReadLineStatus::EndOfFile, ""};
+        return {ReadLineStatus::Accepted, content};
     }
 
     // Keep raw mode active throughout the interactive edit, even if a listener throws.
@@ -194,6 +201,20 @@ std::string Terminal::readLine(const std::string &prompt)
     for (;;)
     {
         auto key = io_->getKey();
+
+        if (key == Key::Ctrl('c'))
+        {
+            writeText("^C\n");
+            history_->rewind();
+            return {ReadLineStatus::Interrupted, ""};
+        }
+        if (key == Key::EndOfFile)
+        {
+            writeText("\n");
+            input_eof_ = true;
+            history_->rewind();
+            return {ReadLineStatus::EndOfFile, ""};
+        }
 
         if (key.isPaste())
         {
@@ -284,6 +305,28 @@ std::string Terminal::readLine(const std::string &prompt)
             continue;
         }
 
+        if (key == Key::Ctrl('d'))
+        {
+            if (line.content().empty())
+            {
+                writeText("\n");
+                input_eof_ = true;
+                history_->rewind();
+                return {ReadLineStatus::EndOfFile, ""};
+            }
+            if (line.cursorOffset() == line.content().size())
+            {
+                bell();
+            }
+            else
+            {
+                cursor.deleteChar();
+                content = line.content();
+                if (handleLineChanged(content, line, cursor) == LineChangedListener::Status::BREAK) break;
+            }
+            continue;
+        }
+
         const auto key_status = handleKeyPressed(key, line, cursor);
         if (key_status == KeyPressedListener::Status::CONTINUE)
         {
@@ -324,7 +367,7 @@ std::string Terminal::readLine(const std::string &prompt)
     history_->insert(content);
     history_->rewind();
 
-    return content;
+    return {ReadLineStatus::Accepted, content};
 }
 
 void Terminal::writeText(const std::string &text, const TextStyle &text_style) const
@@ -416,15 +459,6 @@ void Terminal::registerDefaultKeyListeners()
         return KeyPressedListener::Status::OK;
     });
 
-    auto exit_listener_handler = [](const Key &, Line &line, const Cursor &cursor, const Terminal &terminal) {
-        cursor.moveToEnd();
-        line.setContent("exit");
-        terminal.writeText("\n");
-        return KeyPressedListener::Status::BREAK;
-    };
-    onKeyPressed(Key::Ctrl('c'), exit_listener_handler);
-    onKeyPressed(Key::Ctrl('d'), exit_listener_handler);
-    onKeyPressed(Key::EndOfFile, exit_listener_handler);
     addKeyPressedListener(Key::Tab, completion_);
 }
 

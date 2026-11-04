@@ -22,6 +22,12 @@ class Terminal
 {
 public:
     struct Size { std::size_t cols, rows; };
+    enum class ReadLineStatus { Accepted, Interrupted, EndOfFile };
+    struct ReadLineResult
+    {
+        ReadLineStatus status;
+        std::string text;
+    };
     explicit Terminal(const std::shared_ptr<IO> &io = std::make_shared<StandardIO>(),
                       const std::shared_ptr<History> &history = std::make_shared<MemoryHistory>(),
                       const std::shared_ptr<Completion> &completion = std::make_shared<Completion>());
@@ -52,6 +58,7 @@ public:
 
     void run(const std::string &prompt);
     std::string readLine(const std::string &prompt);
+    ReadLineResult readLineWithStatus(const std::string &prompt);
     [[nodiscard]] bool endOfInput() const { return input_eof_; }
     void writeText(const std::string &text, const TextStyle &text_style = TextStyle::Default) const;
 
