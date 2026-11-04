@@ -76,6 +76,10 @@ public:
             if (byte == 0x1b)
             {
                 keys_.push_back(Key::Esc);
+                // The second ESC starts a new, still pending sequence.
+                // Keep it so a timeout yields another ESC and a following
+                // character can form an Alt key or a control sequence.
+                sequence_.assign(1, '\x1b');
                 return;
             }
             sequence_.push_back(static_cast<char>(byte));

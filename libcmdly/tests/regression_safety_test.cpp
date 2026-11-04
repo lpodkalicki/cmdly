@@ -52,6 +52,35 @@ TEST(KeyDecoderRegression, EscapeTimeout)
     EXPECT_EQ(decoder.nextKey(), cmdly::Key::Esc);
 }
 
+TEST(KeyDecoderRegression, ConsecutiveEscapes)
+{
+    cmdly::KeyDecoder decoder;
+    decoder.feed(0x1b);
+    decoder.feed(0x1b);
+    ASSERT_TRUE(decoder.hasKey());
+    EXPECT_EQ(decoder.nextKey(), cmdly::Key::Esc);
+    EXPECT_FALSE(decoder.hasKey());
+
+    decoder.flush();
+    ASSERT_TRUE(decoder.hasKey());
+    EXPECT_EQ(decoder.nextKey(), cmdly::Key::Esc);
+    EXPECT_FALSE(decoder.hasKey());
+}
+
+TEST(KeyDecoderRegression, EscapeFollowedByAltKey)
+{
+    cmdly::KeyDecoder decoder;
+    decoder.feed(0x1b);
+    decoder.feed(0x1b);
+    decoder.feed('x');
+
+    ASSERT_TRUE(decoder.hasKey());
+    EXPECT_EQ(decoder.nextKey(), cmdly::Key::Esc);
+    ASSERT_TRUE(decoder.hasKey());
+    EXPECT_EQ(decoder.nextKey(), cmdly::Key::Alt('x'));
+    EXPECT_FALSE(decoder.hasKey());
+}
+
 TEST(KeyDecoderRegression, ArrowKeys)
 {
     cmdly::KeyDecoder decoder;
