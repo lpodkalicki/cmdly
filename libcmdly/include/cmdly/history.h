@@ -13,6 +13,10 @@
 #include <filesystem>
 #include <utility>
 #include <vector>
+#include <cerrno>
+#include <cstdlib>
+#include <unistd.h>
+#include <cmdly/exception.h>
 
 namespace cmdly {
 
@@ -158,13 +162,21 @@ public:
 
     void load() override
     {
+        std::error_code error;
+        if (!std::filesystem::exists(file_path_, error))
+        {
+            if (error) throw IOError("could not check history file: " + error.message());
+            return; // A new history has no file yet.
+        }
         std::ifstream fp(file_path_);
+        if (!fp) throw IOError("could not open history file for reading");
         std::vector<std::string> tmp;
     
         for (std::string line; std::getline(fp, line);)
         {
             tmp.push_back(line);
         }
+        if (!fp.eof()) throw IOError("could not read history file");
         
         for (auto & it : std::views::reverse(tmp))
         {
@@ -174,10 +186,45 @@ public:
 
     void save() override
     {
-        std::ofstream fp(file_path_);
-        for (auto& line: lines_)
+        // Create the temporary file in the destination directory so rename is atomic.
+        std::string temp_path = file_path_.string() + ".tmp.XXXXXX";
+        int fd = ::mkstemp(temp_path.data());
+        if (fd < 0) throw IOError("could not create temporary history file");
+
+        try
         {
-            fp << line << "\n";
+            const auto write_all = [&](const std::string &data) {
+                std::size_t offset = 0;
+                while (offset < data.size())
+                {
+                    const auto n = ::write(fd, data.data() + offset, data.size() - offset);
+                    if (n < 0 && errno == EINTR) continue;
+                    if (n <= 0) throw IOError("could not write history file");
+                    offset += static_cast<std::size_t>(n);
+                }
+            };
+            for (const auto &line : lines_)
+            {
+                write_all(line);
+                write_all("\n");
+            }
+            if (::fsync(fd) != 0) throw IOError("could not sync history file");
+            if (::close(fd) != 0)
+            {
+                fd = -1;
+                throw IOError("could not close history file");
+            }
+            fd = -1;
+
+            std::error_code error;
+            std::filesystem::rename(temp_path, file_path_, error);
+            if (error) throw IOError("could not replace history file: " + error.message());
+        }
+        catch (...)
+        {
+            if (fd >= 0) ::close(fd);
+            ::unlink(temp_path.c_str());
+            throw;
         }
     }
 
