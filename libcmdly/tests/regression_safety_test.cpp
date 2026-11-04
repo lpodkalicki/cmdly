@@ -421,3 +421,48 @@ TEST(KeyDecoderRegression, IncompletePasteIsDiscarded)
     EXPECT_TRUE(decoder.nextKey().isPaste());
     EXPECT_FALSE(decoder.pasting());
 }
+
+TEST(KeyDecoderRegression, PasteAtLimitIsAccepted)
+{
+    cmdly::KeyDecoder decoder(3);
+    for (unsigned char byte : std::string("\x1b[200~abc\x1b[201~"))
+    {
+        decoder.feed(byte);
+    }
+    ASSERT_TRUE(decoder.hasKey());
+    const auto key = decoder.nextKey();
+    EXPECT_TRUE(key.isPaste());
+    EXPECT_EQ(key.text(), "abc");
+}
+
+TEST(KeyDecoderRegression, OversizedPasteIsDiscardedWithoutLeakingKeys)
+{
+    cmdly::KeyDecoder decoder(3);
+    for (unsigned char byte : std::string("\x1b[200~abcd\n\x1b[201~z"))
+    {
+        decoder.feed(byte);
+    }
+    ASSERT_TRUE(decoder.hasKey());
+    const auto paste = decoder.nextKey();
+    EXPECT_TRUE(paste.isPaste());
+    EXPECT_TRUE(paste.text().empty());
+    ASSERT_TRUE(decoder.hasKey());
+    EXPECT_EQ(decoder.nextKey(), cmdly::Key('z'));
+    EXPECT_FALSE(decoder.hasKey());
+}
+
+TEST(KeyDecoderRegression, PasteLimitWorksAfterReset)
+{
+    cmdly::KeyDecoder decoder(0);
+    for (unsigned char byte : std::string("\x1b[200~x\x1b[201~"))
+    {
+        decoder.feed(byte);
+    }
+    EXPECT_TRUE(decoder.nextKey().text().empty());
+    decoder.reset();
+    for (unsigned char byte : std::string("\x1b[200~y\x1b[201~"))
+    {
+        decoder.feed(byte);
+    }
+    EXPECT_TRUE(decoder.nextKey().text().empty());
+}

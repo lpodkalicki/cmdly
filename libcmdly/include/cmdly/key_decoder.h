@@ -6,6 +6,7 @@
 #define CMDLY_KEY_DECODER_H
 
 #include <cstdint>
+#include <cstddef>
 #include <deque>
 #include <string>
 #include <stdexcept>
@@ -17,6 +18,12 @@ namespace cmdly {
 class KeyDecoder
 {
 public:
+    static constexpr std::size_t DefaultMaxPasteBytes = 1024 * 1024;
+
+    explicit KeyDecoder(const std::size_t max_paste_bytes = DefaultMaxPasteBytes) :
+        max_paste_bytes_(max_paste_bytes)
+    {}
+
     void feed(const std::uint8_t byte)
     {
         if (pasting_)
@@ -143,6 +150,7 @@ public:
             paste_data_.clear();
             paste_end_match_.clear();
             pasting_ = false;
+            paste_overflow_ = false;
             keys_.push_back(Key::Paste(""));
         }
         if (sequence_.empty())
@@ -164,6 +172,7 @@ public:
         utf8_sequence_.clear();
         keys_.clear();
         pasting_ = false;
+        paste_overflow_ = false;
         paste_data_.clear();
         paste_end_match_.clear();
     }
@@ -174,6 +183,8 @@ private:
     std::size_t utf8_expected_ = 0;
     std::deque<Key> keys_;
     bool pasting_ = false;
+    const std::size_t max_paste_bytes_;
+    bool paste_overflow_ = false;
     std::string paste_data_;
     std::string paste_end_match_;
 
@@ -184,20 +195,27 @@ private:
         while (!paste_end_match_.empty() && end.compare(0, paste_end_match_.size(), paste_end_match_) != 0)
         {
             const auto c = static_cast<unsigned char>(paste_end_match_.front());
-            if (c == '\r' || c == '\n' || c == '\t')
+            if (!paste_overflow_ && (c == '\r' || c == '\n' || c == '\t'))
             {
                 paste_data_.push_back(' ');
             }
-            else if (c >= 0x20 && c != 0x7f)
+            else if (!paste_overflow_ && c >= 0x20 && c != 0x7f)
             {
                 paste_data_.push_back(static_cast<char>(c));
+            }
+            if (paste_data_.size() > max_paste_bytes_)
+            {
+                // discard the entire paste but keep consuming until ESC[201~
+                paste_data_.clear();
+                paste_overflow_ = true;
             }
             paste_end_match_.erase(0, 1);
         }
         if (paste_end_match_ == end)
         {
-            keys_.push_back(Key::Paste(paste_data_));
+            keys_.push_back(Key::Paste(paste_overflow_ ? "" : paste_data_));
             pasting_ = false;
+            paste_overflow_ = false;
             paste_data_.clear();
             paste_end_match_.clear();
         }
@@ -209,6 +227,7 @@ private:
         if (sequence_ == "\x1b[200~")
         {
             pasting_ = true;
+            paste_overflow_ = false;
             paste_data_.clear();
             paste_end_match_.clear();
         }
