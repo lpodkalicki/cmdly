@@ -201,6 +201,7 @@ Terminal::ReadLineResult Terminal::readLineWithStatus(const std::string &prompt)
     for (;;)
     {
         auto key = io_->getKey();
+        if (key != Key::Tab) completion_->resetTabCounter();
 
         if (key == Key::Ctrl('c'))
         {

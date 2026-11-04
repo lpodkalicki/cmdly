@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <cmdly/cursor.h>
@@ -398,6 +399,57 @@ TEST(TerminalRegression, StreamEOFIsNotAnExitCommand)
     EXPECT_EQ(result.status, cmdly::Terminal::ReadLineStatus::EndOfFile);
     EXPECT_TRUE(result.text.empty());
     EXPECT_EQ(terminal.history()->length(), 0U);
+}
+
+TEST(CompletionRegression, CompletesCommandAtCursorWithoutDroppingArguments)
+{
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('s'), cmdly::Key('t'), cmdly::Key::ArrowLeft,
+        cmdly::Key::Tab, cmdly::Key::Enter
+    });
+    auto completion = std::make_shared<cmdly::Completion>();
+    completion->insert("status");
+    cmdly::Terminal terminal(io, std::make_shared<cmdly::MemoryHistory>(), completion);
+    EXPECT_EQ(terminal.readLine("p> "), "status ");
+}
+
+TEST(CompletionRegression, KeepsArgumentsAfterCompletedToken)
+{
+    auto io = std::make_shared<LineRendererCaptureIO>();
+    cmdly::Line line("p> ", cmdly::TextStyle::Default, cmdly::TextStyle::Default, io);
+    cmdly::Cursor cursor(line, io);
+    line.setContent("st --fast");
+    line.setCursorOffset(1, false);
+    cmdly::Terminal terminal(io);
+    cmdly::Completion completion;
+    completion.insert("status");
+
+    completion.invoke(cmdly::Key::Tab, line, cursor, terminal);
+    EXPECT_EQ(line.content(), "status --fast");
+    EXPECT_EQ(line.cursorOffset(), 6U);
+}
+
+TEST(CompletionRegression, DoesNotSuggestCommandNamesAsArguments)
+{
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('e'), cmdly::Key('x'), cmdly::Key('i'), cmdly::Key('t'),
+        cmdly::Key(' '), cmdly::Key::Tab, cmdly::Key::Tab, cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io);
+    EXPECT_EQ(terminal.readLine("p> "), "exit ");
+    EXPECT_EQ(io->output().find("exit     history"), std::string::npos);
+}
+
+TEST(CompletionRegression, NonTabKeyResetsEmptyLineTabCounter)
+{
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key::Tab, cmdly::Key('x'), cmdly::Key::Backspace,
+        cmdly::Key::Tab, cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io);
+    EXPECT_EQ(terminal.readLine("p> "), "");
+    const auto &output = io->output();
+    EXPECT_EQ(std::count(output.begin(), output.end(), '\a'), 2);
 }
 
 TEST(HistorySearchRegression, FindMatchesFromNewest)

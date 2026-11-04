@@ -7,6 +7,7 @@
 #include <cmdly/cursor.h>
 #include <cmdly/terminal.h>
 #include <cmdly/completion.h>
+#include <cctype>
 
 using namespace cmdly;
 
@@ -84,9 +85,28 @@ Completion::Status Completion::invoke(const Key &key, Line &line, Cursor &cursor
         return Status::OK;
     }
 
-    const auto phrase = line.content();
+    const auto content = line.content();
+    const auto offset = line.cursorOffset();
+    std::size_t token_start = offset;
+    while (token_start > 0 && !std::isspace(static_cast<unsigned char>(content[token_start - 1])))
+    {
+        --token_start;
+    }
+    // Static completion contains command names, not command arguments.
+    // Argument completion requires a separate context-aware provider.
+    if (token_start != 0)
+    {
+        key_tab_counter_ = 0;
+        return Status::OK;
+    }
+    std::size_t token_end = offset;
+    while (token_end < content.size() && !std::isspace(static_cast<unsigned char>(content[token_end])))
+    {
+        ++token_end;
+    }
+    const auto phrase = content.substr(token_start, offset - token_start);
     key_tab_counter_++;
-    if (key_tab_counter_ == 1 && phrase.empty())
+    if (key_tab_counter_ == 1 && content.empty())
     {
         terminal.bell();
         return Status::OK;
@@ -95,27 +115,41 @@ Completion::Status Completion::invoke(const Key &key, Line &line, Cursor &cursor
     auto result = search(phrase);
     if (result->empty())
     {
+        key_tab_counter_ = 0;
         return Status::OK;
     }
 
+    std::string replacement;
+    bool replace_token = false;
     if (result->size() == 1)
     {
-        line.setContent(result->words.front() + " ");
+        replacement = result->words.front();
+        if (token_end == content.size()) replacement += ' ';
+        replace_token = true;
     }
     else
     {
         cursor.moveToEnd();
         showSearchResult(terminal, result);
         cursor.rebaseToCurrentRow();
-        if (!result->longest_common_prefix.empty())
+        if (result->longest_common_prefix.size() > phrase.size())
         {
-            line.setContent(result->longest_common_prefix);
+            replacement = result->longest_common_prefix;
+            replace_token = true;
         }
     }
 
     key_tab_counter_ = 0;
+    if (replace_token)
+    {
+        line.setContent(content.substr(0, token_start) + replacement + content.substr(token_end));
+        line.setCursorOffset(token_start + replacement.size(), false);
+    }
+    else
+    {
+        line.setCursorOffset(offset, false);
+    }
     line.update();
-    cursor.moveToEnd();
 
     return Status::OK;
 }

@@ -52,6 +52,7 @@ public:
     void insert(const std::string &word);
     void insert(std::initializer_list<std::string> words);
     std::shared_ptr<Completion::SearchResult> search(const std::string &phrase);
+    void resetTabCounter() { key_tab_counter_ = 0; }
     Completion::Status invoke(const Key &key, Line &line, Cursor &, Terminal &terminal) override;
 
 protected:
