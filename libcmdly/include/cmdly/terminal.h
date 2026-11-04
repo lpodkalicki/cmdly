@@ -21,13 +21,19 @@ namespace cmdly {
 class Terminal
 {
 public:
-    struct Size { std::size_t cols, rows; };
     enum class ReadLineStatus { Accepted, Interrupted, EndOfFile };
+
+    struct Size {
+        std::size_t cols;
+        std::size_t rows;
+    }; /* End of struct Size */
+
     struct ReadLineResult
     {
         ReadLineStatus status;
         std::string text;
-    };
+    }; /* End of struct ReadLineResult */
+
     explicit Terminal(const std::shared_ptr<IO> &io = std::make_shared<StandardIO>(),
                       const std::shared_ptr<History> &history = std::make_shared<MemoryHistory>(),
                       const std::shared_ptr<Completion> &completion = std::make_shared<Completion>());
@@ -49,9 +55,9 @@ public:
     void removeLineEnteredListeners();
 
     void setPromptStyle(const TextStyle &style);
-    const TextStyle& getPromptStyle() const;
+    [[nodiscard]] const TextStyle& getPromptStyle() const;
     void setLineStyle(const TextStyle &style);
-    const TextStyle& getLineStyle() const;
+    [[nodiscard]] const TextStyle& getLineStyle() const;
     void setCursorStyle(const CursorStyle &style);
     const CursorStyle& getCursorStyle();
     void resetStyle();

@@ -175,17 +175,27 @@ private:
     class SessionGuard
     {
     public:
-        explicit SessionGuard(StandardIO &io) : io_(io) { io_.beginSession(); }
-        ~SessionGuard() { io_.endSession(); }
+        explicit SessionGuard(StandardIO &io) : io_(io)
+        {
+            io_.beginSession();
+        }
+        ~SessionGuard()
+        {
+            io_.endSession();
+        }
     private:
         StandardIO &io_;
-    };
+    }; /* End of class SessionGuard */
 
     ReadResult readByte(unsigned char &value, const int timeout_ms) const
     {
         for (;;)
         {
-            struct pollfd pfd = {input_fd_, POLLIN, 0};
+            struct pollfd pfd = {
+                .fd = input_fd_,
+                .events = POLLIN,
+                .revents = 0
+            };
             const int ready = ::poll(&pfd, 1, timeout_ms);
             if (ready == 0)
             {
@@ -193,7 +203,10 @@ private:
             }
             if (ready < 0)
             {
-                if (errno == EINTR) continue;
+                if (errno == EINTR)
+                {
+                    continue;
+                }
                 throw IOError("could not poll terminal input");
             }
             const auto count = ::read(input_fd_, &value, 1);

@@ -103,7 +103,10 @@ inline std::size_t displayWidth(const std::string &text, std::size_t bytes)
             cp = 0xfffd;
             length = 1;
         }
-        if (i + length > bytes) break;
+        if (i + length > bytes)
+        {
+            break;
+        }
         result += width(cp);
         i += length;
     }

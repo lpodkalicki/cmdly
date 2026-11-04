@@ -60,7 +60,7 @@ public:
         line_.setCursorOffset(line_.content().size());
     }
 
-    void putChar(const char c)
+    void putChar(const char c) const
     {
         putText(std::string(1, c));
     }

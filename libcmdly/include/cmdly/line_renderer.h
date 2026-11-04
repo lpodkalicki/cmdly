@@ -99,7 +99,10 @@ private:
                 cp = 0xfffd;
                 size = 1;
             }
-            if (i + size > limit) break;
+            if (i + size > limit)
+            {
+                break;
+            }
             const std::size_t width = utf8::width(cp);
             if (width > 0 && cells % columns_ + width > columns_)
             {
