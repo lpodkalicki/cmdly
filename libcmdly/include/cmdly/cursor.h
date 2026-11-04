@@ -33,7 +33,7 @@ public:
     {
         if (line_.cursorOffset() > 0)
         {
-            line_.setCursorOffset(utf8::previous(line_.content(), line_.cursorOffset()));
+            line_.setCursorOffset(utf8::previousCluster(line_.content(), line_.cursorOffset()));
         }
     }
 
@@ -41,7 +41,7 @@ public:
     {
         if (line_.cursorOffset() < line_.content().size())
         {
-            line_.setCursorOffset(utf8::next(line_.content(), line_.cursorOffset()));
+            line_.setCursorOffset(utf8::nextCluster(line_.content(), line_.cursorOffset()));
         }
     }
 
@@ -76,7 +76,7 @@ public:
     {
         if (line_.cursorOffset() > 0)
         {
-            const std::size_t start = utf8::previous(line_.content(), line_.cursorOffset());
+            const std::size_t start = utf8::previousCluster(line_.content(), line_.cursorOffset());
             line_.removeRange(line_.prompt().size() + start, line_.cursorOffset() - start);
             line_.setCursorOffset(start, false);
             line_.update();
@@ -87,7 +87,7 @@ public:
     {
         if (line_.cursorOffset() < line_.content().size())
         {
-            const std::size_t end = utf8::next(line_.content(), line_.cursorOffset());
+            const std::size_t end = utf8::nextCluster(line_.content(), line_.cursorOffset());
             line_.removeRange(line_.prompt().size() + line_.cursorOffset(), end - line_.cursorOffset());
             line_.update();
         }

@@ -208,6 +208,7 @@ class LineRendererCaptureIO : public cmdly::IO
 {
 public:
     mutable std::string output;
+    std::size_t columns = 10;
 
     cmdly::Key getKey() override
     {
@@ -226,10 +227,51 @@ public:
 
     void getWindowSize(std::size_t *cols, std::size_t *rows) const override
     {
-        *cols = 10;
+        *cols = columns;
         *rows = 24;
     }
 }; /* End of class LineRendererCaptureIO */
+
+TEST(LineRendererRegression, CursorMoveRedrawsAfterWindowResize)
+{
+    auto io = std::make_shared<LineRendererCaptureIO>();
+    cmdly::Line line("p> ", cmdly::TextStyle::Default, cmdly::TextStyle::Default, io);
+    cmdly::Cursor cursor(line, io);
+    cursor.putText("abcdefghijk");
+    EXPECT_EQ(line.cursorRow(), 1U);
+
+    io->columns = 20;
+    io->output.clear();
+    cursor.moveToHome();
+    EXPECT_EQ(line.cursorRow(), 0U);
+    EXPECT_EQ(line.cursorCol(), 4U);
+    EXPECT_NE(io->output.find("abcdefghijk"), std::string::npos);
+}
+
+TEST(Utf8Regression, CombiningMarkIsEditedAsOneCluster)
+{
+    auto io = std::make_shared<LineRendererCaptureIO>();
+    cmdly::Line line("p> ", cmdly::TextStyle::Default, cmdly::TextStyle::Default, io);
+    cmdly::Cursor cursor(line, io);
+    cursor.putText("e\xcc\x81x"); // e + combining acute accent + x
+    EXPECT_EQ(cmdly::utf8::displayWidth(line.content(), line.content().size()), 2U);
+    cursor.moveLeft();
+    cursor.eatChar();
+    EXPECT_EQ(line.content(), "x");
+}
+
+TEST(Utf8Regression, JoinedEmojiOccupiesTwoCells)
+{
+    const std::string emoji = "👩‍💻";
+    EXPECT_EQ(cmdly::utf8::displayWidth(emoji, emoji.size()), 2U);
+    auto io = std::make_shared<LineRendererCaptureIO>();
+    cmdly::Line line("p> ", cmdly::TextStyle::Default, cmdly::TextStyle::Default, io);
+    cmdly::Cursor cursor(line, io);
+    cursor.putText(emoji + "x");
+    cursor.moveLeft();
+    cursor.eatChar();
+    EXPECT_EQ(line.content(), "x");
+}
 
 TEST(LineRendererRegression, EditingWrappedLineDoesNotQueryCursorPosition)
 {

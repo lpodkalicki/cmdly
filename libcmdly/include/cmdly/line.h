@@ -120,7 +120,7 @@ public:
     void setCursorOffset(const std::size_t offset, const bool move = true)
     {
         const auto text = content();
-        cursor_offset_ = utf8::align(text, std::min(offset, text.size()));
+        cursor_offset_ = utf8::alignCluster(text, std::min(offset, text.size()));
         if (move)
         {
             renderer_.moveToOffset(prompt_, text, cursor_offset_);

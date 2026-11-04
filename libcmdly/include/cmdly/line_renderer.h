@@ -33,6 +33,8 @@ public:
         std::size_t rows = 0;
         io_->getWindowSize(&columns_, &rows);
         columns_ = std::max<std::size_t>(columns_, 1);
+        last_prompt_style_ = prompt_style;
+        last_content_style_ = content_style;
 
         std::string output = "\r";
         if (cursor_row_ > 0)
@@ -58,6 +60,15 @@ public:
 
     void moveToOffset(const std::string &prompt, const std::string &content, const std::size_t cursor_offset)
     {
+        if (!io_) return;
+        std::size_t current_columns = 0;
+        std::size_t rows = 0;
+        io_->getWindowSize(&current_columns, &rows);
+        if (std::max<std::size_t>(current_columns, 1) != columns_)
+        {
+            redraw(prompt, content, last_prompt_style_, last_content_style_, cursor_offset);
+            return;
+        }
         const std::size_t prompt_cells = textCells(prompt, prompt.size(), 0);
         const std::size_t cells = textCells(content, cursor_offset, prompt_cells);
         moveTo(cells / columns_, cells % columns_);
@@ -86,30 +97,26 @@ private:
     std::size_t cursor_row_ = 0;
     std::size_t cursor_col_ = 0;
     std::size_t end_row_ = 0;
+    TextStyle last_prompt_style_;
+    TextStyle last_content_style_;
 
     [[nodiscard]] std::size_t textCells(const std::string &text, const std::size_t length, std::size_t cells) const
     {
         const std::size_t limit = std::min(length, text.size());
         for (std::size_t i = 0; i < limit;)
         {
-            std::uint32_t cp = 0;
-            std::size_t size = 0;
-            if (!utf8::decode(text, i, cp, size))
-            {
-                cp = 0xfffd;
-                size = 1;
-            }
-            if (i + size > limit)
+            const auto part = utf8::cluster(text, i);
+            if (i + part.bytes > limit)
             {
                 break;
             }
-            const std::size_t width = utf8::width(cp);
+            const std::size_t width = part.cells;
             if (width > 0 && cells % columns_ + width > columns_)
             {
                 cells += columns_ - cells % columns_;
             }
             cells += width;
-            i += size;
+            i += part.bytes;
         }
         return cells;
     }
@@ -118,26 +125,20 @@ private:
     {
         for (std::size_t i = 0; i < text.size();)
         {
-            std::uint32_t cp = 0;
-            std::size_t length = 0;
-            if (!utf8::decode(text, i, cp, length))
-            {
-                cp = 0xfffd;
-                length = 1;
-            }
-            const std::size_t cells = utf8::width(cp);
+            const auto part = utf8::cluster(text, i);
+            const std::size_t cells = part.cells;
             if (cells > 0 && column % columns_ + cells > columns_)
             {
                 output += "\r\n";
                 column += columns_ - column % columns_;
             }
-            output.append(text, i, length);
+            output.append(text, i, part.bytes);
             column += cells;
             if (cells > 0 && column % columns_ == 0)
             {
                 output += "\r\n";
             }
-            i += length;
+            i += part.bytes;
         }
     }
 
