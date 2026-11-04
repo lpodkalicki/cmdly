@@ -52,6 +52,7 @@ public:
 
     void run(const std::string &prompt);
     std::string readLine(const std::string &prompt);
+    [[nodiscard]] bool endOfInput() const { return input_eof_; }
     void writeText(const std::string &text, const TextStyle &text_style = TextStyle::Default) const;
 
     void bell() const;
@@ -68,6 +69,7 @@ protected:
     TextStyle prompt_style_;
     TextStyle line_style_;
     CursorStyle cursor_style_;
+    bool input_eof_ = false;
 
     void registerDefaultKeyListeners();
     void registerDefaultLineEnteredListeners();

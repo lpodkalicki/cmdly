@@ -24,6 +24,7 @@ public:
     virtual ~IO() = default;
     virtual void beginSession() {}
     virtual void endSession() noexcept {}
+    [[nodiscard]] virtual bool isInteractive() const { return true; }
     virtual Key getKey() = 0;
     virtual char getChar() = 0;
     virtual void write(const std::string &data) const = 0;
@@ -58,8 +59,14 @@ public:
     StandardIO(const StandardIO&) = delete;
     StandardIO& operator=(const StandardIO&) = delete;
 
+    [[nodiscard]] bool isInteractive() const override
+    {
+        return ::isatty(input_fd_) && ::isatty(output_fd_);
+    }
+
     void beginSession() override
     {
+        if (!isInteractive()) return;
         if (session_depth_++ != 0)
         {
             return;

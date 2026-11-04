@@ -103,7 +103,7 @@ const TextStyle& Terminal::getLineStyle() const
 void Terminal::setCursorStyle(const CursorStyle &style)
 {
     cursor_style_ = style;
-    *io_ << cursor_style_.str();
+    if (io_->isInteractive()) *io_ << cursor_style_.str();
 }
 
 const CursorStyle& Terminal::getCursorStyle()
@@ -123,6 +123,7 @@ void Terminal::run(const std::string &prompt)
     for (;;)
     {
         auto content = readLine(prompt);
+        if (input_eof_ && content.empty()) break;
         content = string::trim(content);
         const auto cmd_status = handleLineEntered(content);
         if (cmd_status == LineEnteredListener::Status::CONTINUE) { continue; }
@@ -132,6 +133,29 @@ void Terminal::run(const std::string &prompt)
 
 std::string Terminal::readLine(const std::string &prompt)
 {
+    if (!io_->isInteractive())
+    {
+        if (input_eof_) return "";
+        std::string content;
+        for (;;)
+        {
+            const auto key = io_->getKey();
+            if (key == Key::EndOfFile)
+            {
+                input_eof_ = true;
+                break;
+            }
+            if (key == Key::Enter || key == Key('\n')) break;
+            if (key.isPrintable())
+            {
+                content += key.text().empty() ? std::string(1, key.code()) : key.text();
+            }
+        }
+        history_->insert(content);
+        history_->rewind();
+        return content;
+    }
+
     // Keep raw mode active throughout the interactive edit, even if a listener throws.
     struct SessionScope {
         IO &io;
@@ -305,7 +329,7 @@ std::string Terminal::readLine(const std::string &prompt)
 
 void Terminal::writeText(const std::string &text, const TextStyle &text_style) const
 {
-    if (text_style == TextStyle::Default)
+    if (text_style == TextStyle::Default || !io_->isInteractive())
     {
         *io_ << text;
         return;

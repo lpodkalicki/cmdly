@@ -8,6 +8,60 @@
 #include <cmdly/terminal.h>
 #include <deque>
 
+class PipedInputIO : public cmdly::IO
+{
+public:
+    explicit PipedInputIO(std::string input) : input_(std::move(input)) {}
+
+    [[nodiscard]] bool isInteractive() const override { return false; }
+    cmdly::Key getKey() override
+    {
+        if (position_ == input_.size()) return cmdly::Key::EndOfFile;
+        return cmdly::Key(input_[position_++]);
+    }
+    char getChar() override { return -1; }
+    void write(const std::string &text) const override { output_ += text; }
+    void getWindowSize(std::size_t *cols, std::size_t *rows) const override
+    {
+        *cols = 80;
+        *rows = 24;
+    }
+    [[nodiscard]] const std::string &output() const { return output_; }
+
+private:
+    std::string input_;
+    std::size_t position_ = 0;
+    mutable std::string output_;
+};
+
+TEST(TerminalRegression, PipedInputWithoutFinalNewline)
+{
+    auto io = std::make_shared<PipedInputIO>("first\nlast");
+    cmdly::Terminal terminal(io);
+    terminal.setCursorStyle(cmdly::CursorStyle::Default);
+    EXPECT_EQ(terminal.readLine("prompt> "), "first");
+    EXPECT_FALSE(terminal.endOfInput());
+    EXPECT_EQ(terminal.readLine("prompt> "), "last");
+    EXPECT_TRUE(terminal.endOfInput());
+    EXPECT_EQ(terminal.readLine("prompt> "), "");
+    EXPECT_TRUE(io->output().empty());
+}
+
+TEST(TerminalRegression, PipedRunStopsAtEndOfInput)
+{
+    auto io = std::make_shared<PipedInputIO>("test\n");
+    cmdly::Terminal terminal(io);
+    int commands = 0;
+    terminal.onLineEntered([&commands](const std::string &content, cmdly::Terminal &) {
+        if (content == "test") ++commands;
+        return cmdly::LineEnteredListener::Status::OK;
+    });
+    terminal.run("prompt> ");
+    EXPECT_TRUE(terminal.endOfInput());
+    EXPECT_EQ(commands, 1);
+    EXPECT_TRUE(io->output().empty());
+}
+
 TEST(SafetyRegression, EmptySpecialKeySequence) {
     const cmdly::Key key(std::string{});
     EXPECT_TRUE(key.isSpecial());
