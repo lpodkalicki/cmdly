@@ -95,15 +95,13 @@ struct Cluster
 {
     std::size_t bytes;
     std::size_t cells;
-};
+}; /* End of structr Cluster */
 
-// Approximate terminal grapheme widths without a Unicode library. Handle
-// combining marks, emoji modifiers, variation selectors and ZWJ sequences.
-inline Cluster cluster(const std::string &text, std::size_t offset)
+inline Cluster cluster(const std::string &text, const std::size_t offset)
 {
     std::uint32_t cp = 0;
     std::size_t size = 0;
-    if (!decode(text, offset, cp, size)) return {1, 1};
+    if (!decode(text, offset, cp, size)) return {.bytes = 1, .cells = 1};
 
     std::size_t pos = offset + size;
     std::size_t cells = width(cp);
@@ -143,7 +141,7 @@ inline Cluster cluster(const std::string &text, std::size_t offset)
         else break;
     }
     if (joined) cells = std::max<std::size_t>(cells, 2);
-    return {pos - offset, cells};
+    return {.bytes = pos - offset, .cells = cells};
 }
 
 inline std::size_t alignCluster(const std::string &text, std::size_t offset)
@@ -179,7 +177,7 @@ inline std::size_t previousCluster(const std::string &text, std::size_t offset)
     return previous_pos;
 }
 
-inline std::size_t displayWidth(const std::string &text, std::size_t bytes)
+inline std::size_t displayWidth(const std::string &text, const std::size_t bytes)
 {
     std::size_t result = 0;
     for (std::size_t i = 0; i < std::min(bytes, text.size());)
