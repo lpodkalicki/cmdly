@@ -402,6 +402,50 @@ private:
     mutable std::string output_;
 }; /* End of class HistorySearchIO */
 
+TEST(EmacsKeysRegression, MoveByCharacterAndWord)
+{
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('a'), cmdly::Key('b'), cmdly::Key(' '), cmdly::Key('c'), cmdly::Key('d'),
+        cmdly::Key::Alt('b'), cmdly::Key::Ctrl('f'), cmdly::Key::Ctrl('b'),
+        cmdly::Key::Alt('f'), cmdly::Key::Ctrl('a'), cmdly::Key::Ctrl('e'), cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io);
+    EXPECT_EQ(terminal.readLine("p> "), "ab cd");
+}
+
+TEST(EmacsKeysRegression, ConsecutiveBackwardKillsAccumulateForYank)
+{
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('o'), cmdly::Key('n'), cmdly::Key('e'), cmdly::Key(' '),
+        cmdly::Key('t'), cmdly::Key('w'), cmdly::Key('o'),
+        cmdly::Key::Ctrl('w'), cmdly::Key::Ctrl('w'), cmdly::Key::Ctrl('y'), cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io);
+    EXPECT_EQ(terminal.readLine("p> "), "one two");
+}
+
+TEST(EmacsKeysRegression, ForwardKillAndYank)
+{
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('a'), cmdly::Key('b'), cmdly::Key(' '), cmdly::Key('c'), cmdly::Key('d'),
+        cmdly::Key::Ctrl('a'), cmdly::Key::Alt('d'), cmdly::Key::Ctrl('y'),
+        cmdly::Key::Ctrl('e'), cmdly::Key::Ctrl('u'), cmdly::Key::Ctrl('y'),
+        cmdly::Key::Ctrl('a'), cmdly::Key::Ctrl('k'), cmdly::Key::Ctrl('y'), cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io);
+    EXPECT_EQ(terminal.readLine("p> "), "ab cd");
+}
+
+TEST(EmacsKeysRegression, CtrlLClearsAndRedraws)
+{
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('a'), cmdly::Key::Ctrl('l'), cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io);
+    EXPECT_EQ(terminal.readLine("p> "), "a");
+    EXPECT_NE(io->output().find("\033[2J\033[H"), std::string::npos);
+}
+
 TEST(TerminalRegression, CtrlCCancelsLineWithoutSavingHistory)
 {
     auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{

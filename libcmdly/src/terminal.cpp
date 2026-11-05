@@ -201,6 +201,9 @@ Terminal::ReadLineResult Terminal::readLineWithStatus(const std::string &prompt)
     for (;;)
     {
         auto key = io_->getKey();
+        const bool is_kill = key == Key::Ctrl('w') || key == Key::Ctrl('u') ||
+                             key == Key::Ctrl('k') || key == Key::Alt('d');
+        if (!is_kill) last_kill_ = false;
         if (key != Key::Tab) completion_->resetTabCounter();
 
         if (key == Key::Ctrl('c'))
@@ -391,6 +394,22 @@ void Terminal::clearCurrentLine() const
     *io_ << "\033[K";
 }
 
+void Terminal::killText(const Cursor &cursor, const std::size_t start,
+                        const std::size_t end, const bool backward)
+{
+    const auto removed = cursor.removeText(start, end);
+    if (removed.empty()) return;
+    if (!last_kill_) kill_buffer_ = removed;
+    else if (backward) kill_buffer_.insert(0, removed);
+    else kill_buffer_ += removed;
+    last_kill_ = true;
+}
+
+void Terminal::yankText(const Cursor &cursor)
+{
+    if (!kill_buffer_.empty()) cursor.putText(kill_buffer_);
+}
+
 Terminal::Size Terminal::getSize() const
 {
     Terminal::Size terminal_size{};
@@ -413,6 +432,57 @@ void Terminal::registerDefaultKeyListeners()
 
     onKeyPressed(Key::End, [](const Key &, Line &, const Cursor &cursor, Terminal &) {
         cursor.moveToEnd();
+        return KeyPressedListener::Status::CONTINUE;
+    });
+
+    onKeyPressed(Key::Ctrl('a'), [](const Key &, Line &, const Cursor &cursor, Terminal &) {
+        cursor.moveToHome();
+        return KeyPressedListener::Status::CONTINUE;
+    });
+    onKeyPressed(Key::Ctrl('e'), [](const Key &, Line &, const Cursor &cursor, Terminal &) {
+        cursor.moveToEnd();
+        return KeyPressedListener::Status::CONTINUE;
+    });
+    onKeyPressed(Key::Ctrl('b'), [](const Key &, Line &, const Cursor &cursor, Terminal &) {
+        cursor.moveLeft();
+        return KeyPressedListener::Status::CONTINUE;
+    });
+    onKeyPressed(Key::Ctrl('f'), [](const Key &, Line &, const Cursor &cursor, Terminal &) {
+        cursor.moveRight();
+        return KeyPressedListener::Status::CONTINUE;
+    });
+    onKeyPressed(Key::Alt('b'), [](const Key &, Line &, const Cursor &cursor, Terminal &) {
+        cursor.moveWordLeft();
+        return KeyPressedListener::Status::CONTINUE;
+    });
+    onKeyPressed(Key::Alt('f'), [](const Key &, Line &, const Cursor &cursor, Terminal &) {
+        cursor.moveWordRight();
+        return KeyPressedListener::Status::CONTINUE;
+    });
+    onKeyPressed(Key::Ctrl('w'), [](const Key &, Line &line, const Cursor &cursor, Terminal &terminal) {
+        terminal.killText(cursor, cursor.previousWordOffset(), line.cursorOffset(), true);
+        return KeyPressedListener::Status::OK;
+    });
+    onKeyPressed(Key::Ctrl('u'), [](const Key &, Line &line, const Cursor &cursor, Terminal &terminal) {
+        terminal.killText(cursor, 0, line.cursorOffset(), true);
+        return KeyPressedListener::Status::OK;
+    });
+    onKeyPressed(Key::Ctrl('k'), [](const Key &, Line &line, const Cursor &cursor, Terminal &terminal) {
+        terminal.killText(cursor, line.cursorOffset(), line.content().size(), false);
+        return KeyPressedListener::Status::OK;
+    });
+    onKeyPressed(Key::Alt('d'), [](const Key &, Line &line, const Cursor &cursor, Terminal &terminal) {
+        terminal.killText(cursor, line.cursorOffset(), cursor.nextWordOffset(), false);
+        return KeyPressedListener::Status::OK;
+    });
+    onKeyPressed(Key::Ctrl('y'), [](const Key &, Line &, const Cursor &cursor, Terminal &terminal) {
+        terminal.yankText(cursor);
+        return KeyPressedListener::Status::OK;
+    });
+    onKeyPressed(Key::Ctrl('l'), [](const Key &, Line &line, const Cursor &, Terminal &terminal) {
+        terminal.writeText("\033[2J\033[H");
+        line.rebaseToCurrentRow();
+        line.update();
         return KeyPressedListener::Status::CONTINUE;
     });
 

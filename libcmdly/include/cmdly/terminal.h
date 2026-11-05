@@ -70,6 +70,8 @@ public:
 
     void bell() const;
     void clearCurrentLine() const;
+    void killText(const Cursor &cursor, std::size_t start, std::size_t end, bool backward);
+    void yankText(const Cursor &cursor);
     [[nodiscard]] Terminal::Size getSize() const;
 
 protected:
@@ -83,6 +85,8 @@ protected:
     TextStyle line_style_;
     CursorStyle cursor_style_;
     bool input_eof_ = false;
+    std::string kill_buffer_;
+    bool last_kill_ = false;
 
     void registerDefaultKeyListeners();
     void registerDefaultLineEnteredListeners();

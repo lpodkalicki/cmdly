@@ -6,6 +6,7 @@
 #define CMDLY_CURSOR_H
 
 #include <cstdint>
+#include <cctype>
 #include <memory>
 #include <cmdly/line.h>
 #include <cmdly/io.h>
@@ -60,6 +61,53 @@ public:
         line_.setCursorOffset(line_.content().size());
     }
 
+    [[nodiscard]] std::size_t previousWordOffset() const
+    {
+        const auto text = line_.content();
+        std::size_t pos = line_.cursorOffset();
+        while (pos > 0 && !isWordAt(text, utf8::previousCluster(text, pos)))
+        {
+            pos = utf8::previousCluster(text, pos);
+        }
+        while (pos > 0 && isWordAt(text, utf8::previousCluster(text, pos)))
+        {
+            pos = utf8::previousCluster(text, pos);
+        }
+        return pos;
+    }
+
+    [[nodiscard]] std::size_t nextWordOffset() const
+    {
+        const auto text = line_.content();
+        std::size_t pos = line_.cursorOffset();
+        while (pos < text.size() && !isWordAt(text, pos))
+        {
+            pos = utf8::nextCluster(text, pos);
+        }
+        while (pos < text.size() && isWordAt(text, pos))
+        {
+            pos = utf8::nextCluster(text, pos);
+        }
+        return pos;
+    }
+
+    void moveWordLeft() const { line_.setCursorOffset(previousWordOffset()); }
+    void moveWordRight() const { line_.setCursorOffset(nextWordOffset()); }
+
+    [[nodiscard]] std::string removeText(const std::size_t start, const std::size_t end) const
+    {
+        const auto content = line_.content();
+        if (start >= end || end > content.size())
+        {
+            return "";
+        }
+        const auto removed = content.substr(start, end - start);
+        line_.removeRange(line_.prompt().size() + start, end - start);
+        line_.setCursorOffset(start, false);
+        line_.update();
+        return removed;
+    }
+
     void putChar(const char c) const
     {
         putText(std::string(1, c));
@@ -94,6 +142,15 @@ public:
     }
 
 private:
+    static bool isWordAt(const std::string &text, const std::size_t pos)
+    {
+        if (pos >= text.size())
+        {
+            return false;
+        }
+        const auto c = static_cast<unsigned char>(text[pos]);
+        return c >= 0x80 || std::isalnum(c) || c == '_';
+    }
     Line &line_;
 }; /* End of class Cursor */
 
