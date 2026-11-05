@@ -117,6 +117,22 @@ int main()
 
 The built-in `Completion` contains command names, not argument values. For example, `sta<Tab>` may complete to `status `, but pressing `Tab` after `status ` will not suggest command names again. Application-specific argument completion is not included in this static provider.
 
+### Context-aware argument completion
+
+An optional callback can provide argument candidates based on the current command line and cursor position:
+
+```cpp
+completion->setArgumentHandler([](const cmdly::Completion::Context &ctx) {
+    if (ctx.line.starts_with("node restart "))
+    {
+        return std::vector<std::string>{"rx_01", "rx_02", "rx_backup"};
+    }
+    return std::vector<std::string>{};
+});
+```
+
+`Context` provides the full `line`, byte-based `cursor`, `token_start`, `token_end`, and the token `prefix` before the cursor. The completion engine filters candidates by prefix and replaces only the current token, preserving surrounding arguments. The callback runs synchronously during `Tab` handling; keep it fast and avoid blocking I/O.
+
 ## Persistent history
 
 ```cpp

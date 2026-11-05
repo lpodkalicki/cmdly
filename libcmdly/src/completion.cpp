@@ -7,6 +7,7 @@
 #include <cmdly/cursor.h>
 #include <cmdly/terminal.h>
 #include <cmdly/completion.h>
+#include <algorithm>
 #include <cctype>
 
 using namespace cmdly;
@@ -34,17 +35,16 @@ void Completion::insert(const std::initializer_list<std::string> words)
 
 std::shared_ptr<Completion::SearchResult> Completion::search(const std::string& phrase)
 {
-    // if nothing to search, then return all words we have
-    if (phrase.empty())
-    {
-        auto words = std::vector<std::string>(words_.begin(), words_.end());
-        return std::make_shared<Completion::SearchResult>(words, longest_word_length_, "");
-    }
+    return searchCandidates(std::vector<std::string>(words_.begin(), words_.end()), phrase);
+}
 
-    // make a search
+std::shared_ptr<Completion::SearchResult> Completion::searchCandidates(
+    std::vector<std::string> candidates, const std::string &phrase)
+{
+    std::sort(candidates.begin(), candidates.end());
+    candidates.erase(std::unique(candidates.begin(), candidates.end()), candidates.end());
     auto result = std::make_shared<SearchResult>();
-    result->smallest_word_length = longest_word_length_;
-    for (auto& word: words_)
+    for (const auto &word : candidates)
     {
         if (word.starts_with(phrase))
         {
@@ -52,7 +52,7 @@ std::shared_ptr<Completion::SearchResult> Completion::search(const std::string& 
             {
                 result->longest_word_length = word.size();
             }
-            if (word.size() < result->smallest_word_length)
+            if (result->words.empty() || word.size() < result->smallest_word_length)
             {
                 result->smallest_word_length = word.size();
             }
@@ -60,13 +60,11 @@ std::shared_ptr<Completion::SearchResult> Completion::search(const std::string& 
         }
     }
 
-    // if found 0 or 1 word, return result immediately
     if (result->size() < 2)
     {
         return result;
     }
 
-    // find longest common prefix
     const std::string first = result->words.front();
     const std::string last = result->words.back();
     std::size_t i = 0;
@@ -92,19 +90,18 @@ Completion::Status Completion::invoke(const Key &key, Line &line, Cursor &cursor
     {
         --token_start;
     }
-    // Static completion contains command names, not command arguments.
-    // Argument completion requires a separate context-aware provider.
-    if (token_start != 0)
-    {
-        key_tab_counter_ = 0;
-        return Status::OK;
-    }
     std::size_t token_end = offset;
     while (token_end < content.size() && !std::isspace(static_cast<unsigned char>(content[token_end])))
     {
         ++token_end;
     }
     const auto phrase = content.substr(token_start, offset - token_start);
+    const bool argument = token_start != 0;
+    if (argument && !argument_handler_)
+    {
+        key_tab_counter_ = 0;
+        return Status::OK;
+    }
     key_tab_counter_++;
     if (key_tab_counter_ == 1 && content.empty())
     {
@@ -112,7 +109,8 @@ Completion::Status Completion::invoke(const Key &key, Line &line, Cursor &cursor
         return Status::OK;
     }
 
-    auto result = search(phrase);
+    auto result = argument ? searchCandidates(argument_handler_({content, offset, token_start, token_end, phrase}), phrase)
+                           : search(phrase);
     if (result->empty())
     {
         key_tab_counter_ = 0;

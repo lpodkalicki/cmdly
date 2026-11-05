@@ -526,6 +526,49 @@ TEST(CompletionRegression, DoesNotSuggestCommandNamesAsArguments)
     EXPECT_EQ(io->output().find("exit     history"), std::string::npos);
 }
 
+TEST(CompletionRegression, ArgumentHandlerCompletesTokenAndPreservesSuffix)
+{
+    auto io = std::make_shared<LineRendererCaptureIO>();
+    cmdly::Line line("p> ", cmdly::TextStyle::Default, cmdly::TextStyle::Default, io);
+    cmdly::Cursor cursor(line, io);
+    line.setContent("node restart rx --force");
+    line.setCursorOffset(15, false); // After rx, before the next argument.
+    cmdly::Terminal terminal(io);
+    cmdly::Completion completion;
+    bool called = false;
+    completion.setArgumentHandler([&called](const cmdly::Completion::Context &ctx) {
+        called = true;
+        EXPECT_EQ(ctx.line, "node restart rx --force");
+        EXPECT_EQ(ctx.prefix, "rx");
+        EXPECT_EQ(ctx.token_start, 13U);
+        EXPECT_EQ(ctx.token_end, 15U);
+        return std::vector<std::string>{"rx_01", "tx_01"};
+    });
+
+    completion.invoke(cmdly::Key::Tab, line, cursor, terminal);
+    EXPECT_TRUE(called);
+    EXPECT_EQ(line.content(), "node restart rx_01 --force");
+    EXPECT_EQ(line.cursorOffset(), 18U);
+}
+
+TEST(CompletionRegression, ArgumentHandlerIsNotCalledForCommandName)
+{
+    auto io = std::make_shared<LineRendererCaptureIO>();
+    cmdly::Line line("p> ", cmdly::TextStyle::Default, cmdly::TextStyle::Default, io);
+    cmdly::Cursor cursor(line, io);
+    line.setContent("sta");
+    line.setCursorOffset(3, false);
+    cmdly::Terminal terminal(io);
+    cmdly::Completion completion;
+    completion.insert("status");
+    completion.setArgumentHandler([](const cmdly::Completion::Context &) -> std::vector<std::string> {
+        throw std::logic_error("argument handler called for command name");
+    });
+
+    EXPECT_NO_THROW(completion.invoke(cmdly::Key::Tab, line, cursor, terminal));
+    EXPECT_EQ(line.content(), "status ");
+}
+
 TEST(CompletionRegression, NonTabKeyResetsEmptyLineTabCounter)
 {
     auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{

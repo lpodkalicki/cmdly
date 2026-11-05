@@ -6,6 +6,7 @@
 #define CMDLY_COMPLETION_H
 
 #include <cstdint>
+#include <functional>
 #include <set>
 #include <utility>
 #include <cmdly/listener.h>
@@ -17,6 +18,17 @@ class Terminal;
 class Completion : public KeyPressedListener
 {
 public:
+    struct Context
+    {
+        std::string line;
+        std::size_t cursor;
+        std::size_t token_start;
+        std::size_t token_end;
+        std::string prefix;
+    };
+
+    using ArgumentHandler = std::function<std::vector<std::string>(const Context&)>;
+
     struct SearchResult
     {
         std::vector<std::string> words;
@@ -51,6 +63,7 @@ public:
     Completion();
     void insert(const std::string &word);
     void insert(std::initializer_list<std::string> words);
+    void setArgumentHandler(ArgumentHandler handler) { argument_handler_ = std::move(handler); }
     std::shared_ptr<Completion::SearchResult> search(const std::string &phrase);
     void resetTabCounter() { key_tab_counter_ = 0; }
     Completion::Status invoke(const Key &key, Line &line, Cursor &, Terminal &terminal) override;
@@ -59,6 +72,10 @@ protected:
     std::set<std::string> words_;
     std::uint16_t key_tab_counter_;
     std::uint16_t longest_word_length_;
+    ArgumentHandler argument_handler_;
+
+    static std::shared_ptr<SearchResult> searchCandidates(std::vector<std::string> candidates,
+                                                           const std::string &phrase);
 
     static void showSearchResult(Terminal &terminal, const std::shared_ptr<Completion::SearchResult>& result);
 }; /* End of Completion */

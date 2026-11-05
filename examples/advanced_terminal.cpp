@@ -40,12 +40,37 @@ int main()
         {
             term.writeText("Allowed commands:\n");
             term.writeText("  help - show this help\n");
+            term.writeText("  node status <id> - show a demo node status\n");
+            term.writeText("  node restart <id> - simulate a node restart\n");
             term.writeText("  exit - quit terminal\n");
+            return LineEnteredListener::Status::CONTINUE;
+        }
+        if (line.starts_with("node status "))
+        {
+            term.writeText("Demo status for " + line.substr(12) + ": OK\n");
+            return LineEnteredListener::Status::CONTINUE;
+        }
+        if (line.starts_with("node restart "))
+        {
+            term.writeText("Demo restart requested for " + line.substr(13) + "\n");
             return LineEnteredListener::Status::CONTINUE;
         }
         return LineEnteredListener::Status::OK;
     });
-    completion->insert("help");
+    completion->insert({"help", "node"});
+    completion->setArgumentHandler([](const Completion::Context &ctx) {
+        if (!ctx.line.starts_with("node ")) return std::vector<std::string>{};
+
+        if (ctx.token_start == 5)
+        {
+            return std::vector<std::string>{"restart", "status"};
+        }
+        if (ctx.line.starts_with("node restart ") || ctx.line.starts_with("node status "))
+        {
+            return std::vector<std::string>{"rx_01", "rx_02", "rx_backup"};
+        }
+        return std::vector<std::string>{};
+    });
 
     terminal->onLineChanged([](const std::string &content, Line &line, const Cursor &, const Terminal &)
     {
