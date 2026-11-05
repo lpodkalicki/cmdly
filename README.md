@@ -8,6 +8,7 @@ Cmdly is a lightweight C++20 library for building interactive command-line edito
 - UTF-8 input and display-width-aware rendering, including common combining-character and emoji sequences.
 - In-memory or file-backed command history with incremental reverse search (`Ctrl+R`).
 - Inline autosuggestions from command history, accepted with `Right` or `End`.
+- Live Python/Bash-like syntax highlighting, with a replaceable highlighter callback.
 - Command-name completion with `Tab` (the built-in static provider completes the first token only).
 - Single-line bracketed paste, with a configurable input-size limit.
 - Configurable prompt, input text, and cursor styles.
@@ -65,6 +66,30 @@ Press `Ctrl+R` and type a substring to search from the newest history entry towa
 When the cursor is at the end of a nonempty line, Cmdly looks for the most recent history entry beginning with the typed text. The remaining suffix is shown with faint text styling, without changing the input buffer. Press `Right` or `End` to accept the entire suffix; `Enter` runs only the text you actually typed. Suggestions disappear when moving the cursor into the line or when entering reverse history search.
 
 Autosuggestions are enabled by default. Disable them using `terminal.setAutosuggestionsEnabled(false)` (or `terminal->setAutosuggestionsEnabled(false)` for a pointer).
+
+### Syntax highlighting
+
+Interactive input uses `cmdly::highlighters::pythonLike` by default. It colors identifiers,
+scoped names such as `d::a`, numbers (`1`, `0.12`), quoted strings, function names
+followed by `(`, and comments beginning with `#`. Incomplete quoted strings are
+also highlighted as you type. This is a lightweight tokenizer, not a Python or
+Bash parser; it does not validate expressions or execute commands.
+
+```cpp
+terminal.setHighlighter(cmdly::highlighters::pythonLike); // explicitly select default
+terminal.setHighlighter({});                              // disable highlighting
+
+terminal.setHighlighter([](const std::string &input) {
+    return std::vector<cmdly::HighlightSpan>{
+        {0, std::min<std::size_t>(input.size(), 3), cmdly::TextStyle(cmdly::Color::Cyan)}
+    };
+});
+```
+
+Each `HighlightSpan` uses byte offsets into the unmodified UTF-8 input. Spans
+must be ordered, non-overlapping, and aligned to UTF-8 grapheme cluster boundaries.
+Invalid spans are ignored by the renderer. Highlighting affects display only;
+history, cursor positions, autosuggestions, and submitted command text remain unchanged.
 
 ## Basic usage
 

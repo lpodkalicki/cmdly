@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <cmdly/io.h>
+#include <cmdly/highlighter.h>
 #include <cmdly/style.h>
 #include <cmdly/utf8.h>
 
@@ -24,7 +25,8 @@ public:
 
     void redraw(const std::string &prompt, const std::string &content,
                 const TextStyle &prompt_style, const TextStyle &content_style,
-                const std::size_t cursor_offset, const std::string &suggestion = "")
+                const std::size_t cursor_offset, const std::string &suggestion = "",
+                const std::vector<HighlightSpan> &highlights = {})
     {
         if (!io_)
         {
@@ -35,6 +37,8 @@ public:
         columns_ = std::max<std::size_t>(columns_, 1);
         last_prompt_style_ = prompt_style;
         last_content_style_ = content_style;
+        last_suggestion_ = suggestion;
+        last_highlights_ = highlights;
 
         std::string output = "\r";
         if (cursor_row_ > 0)
@@ -47,8 +51,23 @@ public:
         output += prompt_style.str();
         appendText(output, prompt, column);
         output += std::string(Color::TERMINATOR);
+        std::size_t offset = 0;
+        for (const auto &span : highlights)
+        {
+            if (span.start < offset || span.start > content.size() ||
+                span.length > content.size() - span.start ||
+                utf8::alignCluster(content, span.start) != span.start ||
+                utf8::alignCluster(content, span.start + span.length) != span.start + span.length) continue;
+            output += content_style.str();
+            appendText(output, content.substr(offset, span.start - offset), column);
+            output += std::string(Color::TERMINATOR);
+            output += span.style.str();
+            appendText(output, content.substr(span.start, span.length), column);
+            output += std::string(Color::TERMINATOR);
+            offset = span.start + span.length;
+        }
         output += content_style.str();
-        appendText(output, content, column);
+        appendText(output, content.substr(offset), column);
         output += std::string(Color::TERMINATOR);
         if (!suggestion.empty())
         {
@@ -74,7 +93,8 @@ public:
         // Keep the last known width instead of recursively redrawing forever.
         if (current_columns > 0 && current_columns != columns_)
         {
-            redraw(prompt, content, last_prompt_style_, last_content_style_, cursor_offset);
+            redraw(prompt, content, last_prompt_style_, last_content_style_, cursor_offset,
+                   last_suggestion_, last_highlights_);
             return;
         }
         const std::size_t prompt_cells = textCells(prompt, prompt.size(), 0);
@@ -107,6 +127,8 @@ private:
     std::size_t end_row_ = 0;
     TextStyle last_prompt_style_;
     TextStyle last_content_style_;
+    std::string last_suggestion_;
+    std::vector<HighlightSpan> last_highlights_;
 
     [[nodiscard]] std::size_t textCells(const std::string &text, const std::size_t length, std::size_t cells) const
     {

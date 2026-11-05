@@ -4,6 +4,7 @@
 #include <string>
 #include <cmdly/cursor.h>
 #include <cmdly/history.h>
+#include <cmdly/highlighter.h>
 #include <cmdly/key.h>
 #include <cmdly/key_decoder.h>
 #include <cmdly/terminal.h>
@@ -427,6 +428,35 @@ TEST(TerminalRegression, EnterDoesNotRedrawPromptAfterNewline)
     EXPECT_EQ(terminal.readLine("console> "), "help");
     ASSERT_FALSE(io->output().empty());
     EXPECT_EQ(io->output().back(), '\n');
+}
+
+TEST(HighlighterRegression, PythonLikeTokens)
+{
+    const std::string input = "a = 1 b = \"123\" d::a = 0.12 maks() func(1, \"abc\", key=12, val=\"123\")";
+    const auto spans = cmdly::highlighters::pythonLike(input);
+    const auto hasSpan = [&](const std::string &token, const cmdly::TextStyle &style) {
+        return std::any_of(spans.begin(), spans.end(), [&](const auto &span) {
+            return input.substr(span.start, span.length) == token && span.style == style;
+        });
+    };
+    EXPECT_TRUE(hasSpan("a", cmdly::TextStyle(cmdly::Color::Blue)));
+    EXPECT_TRUE(hasSpan("d::a", cmdly::TextStyle(cmdly::Color::Blue)));
+    EXPECT_TRUE(hasSpan("0.12", cmdly::TextStyle(cmdly::Color::Yellow)));
+    EXPECT_TRUE(hasSpan("\"123\"", cmdly::TextStyle(cmdly::Color::Green)));
+    EXPECT_TRUE(hasSpan("maks", cmdly::TextStyle(cmdly::Color::Magenta)));
+    EXPECT_TRUE(hasSpan("func", cmdly::TextStyle(cmdly::Color::Magenta)));
+    EXPECT_TRUE(hasSpan("key", cmdly::TextStyle(cmdly::Color::Blue)));
+    EXPECT_TRUE(hasSpan("12", cmdly::TextStyle(cmdly::Color::Yellow)));
+}
+
+TEST(HighlighterRegression, IncompleteStringAndFunction)
+{
+    const auto spans = cmdly::highlighters::pythonLike("func(\"unfinished");
+    ASSERT_EQ(spans.size(), 2U);
+    EXPECT_EQ(spans[0].start, 0U);
+    EXPECT_EQ(spans[0].length, 4U);
+    EXPECT_EQ(spans[1].start, 5U);
+    EXPECT_EQ(spans[1].length, 11U);
 }
 
 TEST(EmacsKeysRegression, MoveByCharacterAndWord)

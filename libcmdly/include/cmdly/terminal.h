@@ -9,6 +9,7 @@
 #include <vector>
 #include <memory>
 #include <cmdly/style.h>
+#include <cmdly/highlighter.h>
 #include <cmdly/line.h>
 #include <cmdly/cursor.h>
 #include <cmdly/listener.h>
@@ -63,6 +64,7 @@ public:
     void resetStyle();
     void setAutosuggestionsEnabled(bool enabled) { autosuggestions_enabled_ = enabled; }
     [[nodiscard]] bool autosuggestionsEnabled() const { return autosuggestions_enabled_; }
+    void setHighlighter(Highlighter highlighter) { highlighter_ = std::move(highlighter); }
 
     void run(const std::string &prompt);
     std::string readLine(const std::string &prompt);
@@ -90,6 +92,7 @@ protected:
     std::string kill_buffer_;
     bool last_kill_ = false;
     bool autosuggestions_enabled_ = true;
+    Highlighter highlighter_ = highlighters::pythonLike;
 
     void registerDefaultKeyListeners();
     void registerDefaultLineEnteredListeners();

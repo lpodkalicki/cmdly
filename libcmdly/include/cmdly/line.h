@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 #include <cmdly/style.h>
+#include <cmdly/highlighter.h>
 #include <cmdly/io.h>
 #include <cmdly/line_renderer.h>
 #include <cmdly/utf8.h>
@@ -153,7 +154,14 @@ public:
     {
         const auto text = content();
         suggestion_ = suggestion_provider_ ? suggestion_provider_(text, cursor_offset_) : "";
-        renderer_.redraw(prompt_, text, prompt_style_, content_style_, cursor_offset_, suggestion_);
+        renderer_.redraw(prompt_, text, prompt_style_, content_style_, cursor_offset_, suggestion_,
+                         highlighter_ ? highlighter_(text) : std::vector<HighlightSpan>{});
+    }
+
+    void setHighlighter(Highlighter highlighter)
+    {
+        highlighter_ = std::move(highlighter);
+        update();
     }
 
     void setSuggestionProvider(std::function<std::string(const std::string &, std::size_t)> provider)
@@ -174,6 +182,7 @@ protected:
     std::size_t cursor_offset_ = 0;
     std::string suggestion_;
     std::function<std::string(const std::string &, std::size_t)> suggestion_provider_;
+    Highlighter highlighter_;
 }; /* End of class Line */
 
 } /* End of namespace cmdly */

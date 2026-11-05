@@ -170,6 +170,7 @@ Terminal::ReadLineResult Terminal::readLineWithStatus(const std::string &prompt)
         ~SessionScope() { io.endSession(); }
     } session(*io_);
     Line line(prompt, prompt_style_, line_style_, io_);
+    line.setHighlighter(highlighter_);
     Cursor cursor(line, io_);
     std::string content;
     bool searching = false;
