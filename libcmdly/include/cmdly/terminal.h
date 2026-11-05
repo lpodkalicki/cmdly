@@ -61,6 +61,8 @@ public:
     void setCursorStyle(const CursorStyle &style);
     const CursorStyle& getCursorStyle();
     void resetStyle();
+    void setAutosuggestionsEnabled(bool enabled) { autosuggestions_enabled_ = enabled; }
+    [[nodiscard]] bool autosuggestionsEnabled() const { return autosuggestions_enabled_; }
 
     void run(const std::string &prompt);
     std::string readLine(const std::string &prompt);
@@ -87,6 +89,7 @@ protected:
     bool input_eof_ = false;
     std::string kill_buffer_;
     bool last_kill_ = false;
+    bool autosuggestions_enabled_ = true;
 
     void registerDefaultKeyListeners();
     void registerDefaultLineEnteredListeners();

@@ -28,6 +28,12 @@ public:
         chars.pop_front();
         return c;
     }
+
+    void getWindowSize(std::size_t *cols, std::size_t *rows) const override
+    {
+        *cols = 80;
+        *rows = 24;
+    }
 };
 
 TEST(TerminalTest, checkReadLineReturnsValidCommand)

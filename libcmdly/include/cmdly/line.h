@@ -6,6 +6,7 @@
 #define CMDLY_LINE_H
 
 #include <algorithm>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -123,7 +124,8 @@ public:
         cursor_offset_ = utf8::alignCluster(text, std::min(offset, text.size()));
         if (move)
         {
-            renderer_.moveToOffset(prompt_, text, cursor_offset_);
+            if (suggestion_provider_) update();
+            else renderer_.moveToOffset(prompt_, text, cursor_offset_);
         }
     }
 
@@ -149,8 +151,18 @@ public:
 
     void update()
     {
-        renderer_.redraw(prompt_, content(), prompt_style_, content_style_, cursor_offset_);
+        const auto text = content();
+        suggestion_ = suggestion_provider_ ? suggestion_provider_(text, cursor_offset_) : "";
+        renderer_.redraw(prompt_, text, prompt_style_, content_style_, cursor_offset_, suggestion_);
     }
+
+    void setSuggestionProvider(std::function<std::string(const std::string &, std::size_t)> provider)
+    {
+        suggestion_provider_ = std::move(provider);
+        update();
+    }
+
+    [[nodiscard]] const std::string &suggestion() const { return suggestion_; }
 
 protected:
     std::string data_;
@@ -160,6 +172,8 @@ protected:
     std::shared_ptr<IO> io_;
     LineRenderer renderer_{nullptr};
     std::size_t cursor_offset_ = 0;
+    std::string suggestion_;
+    std::function<std::string(const std::string &, std::size_t)> suggestion_provider_;
 }; /* End of class Line */
 
 } /* End of namespace cmdly */

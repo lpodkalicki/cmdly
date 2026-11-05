@@ -24,7 +24,7 @@ public:
 
     void redraw(const std::string &prompt, const std::string &content,
                 const TextStyle &prompt_style, const TextStyle &content_style,
-                const std::size_t cursor_offset)
+                const std::size_t cursor_offset, const std::string &suggestion = "")
     {
         if (!io_)
         {
@@ -50,6 +50,12 @@ public:
         output += content_style.str();
         appendText(output, content, column);
         output += std::string(Color::TERMINATOR);
+        if (!suggestion.empty())
+        {
+            output += "\033[2m";
+            appendText(output, suggestion, column);
+            output += "\033[0m";
+        }
 
         end_row_ = column / columns_;
         cursor_row_ = end_row_;
@@ -64,7 +70,9 @@ public:
         std::size_t current_columns = 0;
         std::size_t rows = 0;
         io_->getWindowSize(&current_columns, &rows);
-        if (std::max<std::size_t>(current_columns, 1) != columns_)
+        // A zero width means the IO backend did not provide a window size.
+        // Keep the last known width instead of recursively redrawing forever.
+        if (current_columns > 0 && current_columns != columns_)
         {
             redraw(prompt, content, last_prompt_style_, last_content_style_, cursor_offset);
             return;

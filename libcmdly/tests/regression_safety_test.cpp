@@ -248,6 +248,19 @@ TEST(LineRendererRegression, CursorMoveRedrawsAfterWindowResize)
     EXPECT_NE(io->output.find("abcdefghijk"), std::string::npos);
 }
 
+TEST(LineRendererRegression, UnknownWindowWidthDoesNotRecurse)
+{
+    auto io = std::make_shared<LineRendererCaptureIO>();
+    io->columns = 0;
+    cmdly::Line line("p> ", cmdly::TextStyle::Default, cmdly::TextStyle::Default, io);
+    cmdly::Cursor cursor(line, io);
+    cursor.putText("abc");
+    cursor.moveToHome();
+    cursor.moveToEnd();
+    EXPECT_EQ(line.content(), "abc");
+    EXPECT_EQ(line.cursorOffset(), 3U);
+}
+
 TEST(Utf8Regression, CombiningMarkIsEditedAsOneCluster)
 {
     auto io = std::make_shared<LineRendererCaptureIO>();
@@ -401,6 +414,20 @@ private:
     std::deque<cmdly::Key> keys_;
     mutable std::string output_;
 }; /* End of class HistorySearchIO */
+
+TEST(TerminalRegression, EnterDoesNotRedrawPromptAfterNewline)
+{
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('h'), cmdly::Key('e'), cmdly::Key('l'), cmdly::Key('p'),
+        cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io);
+    terminal.history()->insert("help me");
+
+    EXPECT_EQ(terminal.readLine("console> "), "help");
+    ASSERT_FALSE(io->output().empty());
+    EXPECT_EQ(io->output().back(), '\n');
+}
 
 TEST(EmacsKeysRegression, MoveByCharacterAndWord)
 {
@@ -567,6 +594,49 @@ TEST(CompletionRegression, ArgumentHandlerIsNotCalledForCommandName)
 
     EXPECT_NO_THROW(completion.invoke(cmdly::Key::Tab, line, cursor, terminal));
     EXPECT_EQ(line.content(), "status ");
+}
+
+TEST(AutosuggestionRegression, RightArrowAcceptsHistorySuffix)
+{
+    auto history = std::make_shared<cmdly::MemoryHistory>();
+    history->insert("node restart rx_01");
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('n'), cmdly::Key('o'), cmdly::Key('d'), cmdly::Key('e'),
+        cmdly::Key::ArrowRight, cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io, history);
+    EXPECT_EQ(terminal.readLine("p> "), "node restart rx_01");
+    EXPECT_NE(io->output().find("\033[2m restart rx_01"), std::string::npos);
+}
+
+TEST(AutosuggestionRegression, EnterDoesNotAcceptHistorySuffix)
+{
+    auto history = std::make_shared<cmdly::MemoryHistory>();
+    history->insert("node restart rx_01");
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('n'), cmdly::Key('o'), cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io, history);
+    EXPECT_EQ(terminal.readLine("p> "), "no");
+}
+
+TEST(AutosuggestionRegression, EndAcceptsSuggestionAndCanBeDisabled)
+{
+    auto history = std::make_shared<cmdly::MemoryHistory>();
+    history->insert("history");
+    auto io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('h'), cmdly::Key::End, cmdly::Key::Enter
+    });
+    cmdly::Terminal terminal(io, history);
+    EXPECT_EQ(terminal.readLine("p> "), "history");
+
+    auto disabled_io = std::make_shared<HistorySearchIO>(std::deque<cmdly::Key>{
+        cmdly::Key('h'), cmdly::Key::End, cmdly::Key::Enter
+    });
+    cmdly::Terminal disabled(disabled_io, history);
+    disabled.setAutosuggestionsEnabled(false);
+    EXPECT_EQ(disabled.readLine("p> "), "h");
+    EXPECT_EQ(disabled_io->output().find("\033[2m"), std::string::npos);
 }
 
 TEST(CompletionRegression, NonTabKeyResetsEmptyLineTabCounter)

@@ -7,6 +7,7 @@ Cmdly is a lightweight C++20 library for building interactive command-line edito
 - Interactive line editing with cursor navigation, word operations, and Emacs-style shortcuts.
 - UTF-8 input and display-width-aware rendering, including common combining-character and emoji sequences.
 - In-memory or file-backed command history with incremental reverse search (`Ctrl+R`).
+- Inline autosuggestions from command history, accepted with `Right` or `End`.
 - Command-name completion with `Tab` (the built-in static provider completes the first token only).
 - Single-line bracketed paste, with a configurable input-size limit.
 - Configurable prompt, input text, and cursor styles.
@@ -47,6 +48,7 @@ ctest --test-dir build --output-on-failure
 | `Ctrl+L` | Clear the screen and redraw the input line |
 | `Up` / `Down` | Navigate command history |
 | `Ctrl+R` | Incremental reverse history search |
+| `Right` / `End` at line end | Accept a visible history suggestion |
 | `Tab` | Complete a command name |
 | `Enter` | Accept the current line |
 | `Ctrl+C` | Cancel the current line without adding it to history |
@@ -57,6 +59,12 @@ Consecutive kill commands accumulate their deleted text for `Ctrl+Y`. Word navig
 ### History search
 
 Press `Ctrl+R` and type a substring to search from the newest history entry toward older entries. Press `Ctrl+R` again for the next match and `Backspace` to change the query. `Enter` accepts the current match; arrow keys can accept it for further editing. `Esc` or `Ctrl+G` cancels the search and restores the unfinished line. `Ctrl+C` interrupts the entire input line.
+
+### Inline autosuggestions
+
+When the cursor is at the end of a nonempty line, Cmdly looks for the most recent history entry beginning with the typed text. The remaining suffix is shown with faint text styling, without changing the input buffer. Press `Right` or `End` to accept the entire suffix; `Enter` runs only the text you actually typed. Suggestions disappear when moving the cursor into the line or when entering reverse history search.
+
+Autosuggestions are enabled by default. Disable them using `terminal.setAutosuggestionsEnabled(false)` (or `terminal->setAutosuggestionsEnabled(false)` for a pointer).
 
 ## Basic usage
 

@@ -178,6 +178,16 @@ Terminal::ReadLineResult Terminal::readLineWithStatus(const std::string &prompt)
     std::size_t saved_offset = 0;
     std::size_t search_index = 0;
 
+    line.setSuggestionProvider([&](const std::string &text, const std::size_t offset) {
+        if (!autosuggestions_enabled_ || searching || text.empty() || offset != text.size()) return std::string{};
+        for (const auto &entry : history_->lines())
+        {
+            if (entry.size() > text.size() && entry.starts_with(text))
+                return entry.substr(text.size());
+        }
+        return std::string{};
+    });
+
     const auto refreshSearch = [&]() {
         const bool found = search_index < history_->length();
         const std::string search_prompt = std::string(found ? "(reverse-i-search)`" : "(failed reverse-i-search)`") +
@@ -208,12 +218,14 @@ Terminal::ReadLineResult Terminal::readLineWithStatus(const std::string &prompt)
 
         if (key == Key::Ctrl('c'))
         {
+            line.setSuggestionProvider({});
             writeText("^C\n");
             history_->rewind();
             return {ReadLineStatus::Interrupted, ""};
         }
         if (key == Key::EndOfFile)
         {
+            line.setSuggestionProvider({});
             writeText("\n");
             input_eof_ = true;
             history_->rewind();
@@ -330,6 +342,17 @@ Terminal::ReadLineResult Terminal::readLineWithStatus(const std::string &prompt)
             }
             continue;
         }
+
+        if (!searching && (key == Key::ArrowRight || key == Key::End) &&
+            line.cursorOffset() == line.content().size() && !line.suggestion().empty())
+        {
+            cursor.putText(line.suggestion());
+            content = line.content();
+            if (handleLineChanged(content, line, cursor) == LineChangedListener::Status::BREAK) break;
+            continue;
+        }
+
+        if (key == Key::Enter) line.setSuggestionProvider({});
 
         const auto key_status = handleKeyPressed(key, line, cursor);
         if (key_status == KeyPressedListener::Status::CONTINUE)
