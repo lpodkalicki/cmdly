@@ -1,174 +1,155 @@
 # Cmdly
 
-Cmdly is an C++ project designed for creating a versatile line editor, reminiscent of popular tools like bash's readline or zsh's zle. This project is crafted to offer a seamless and interactive command-line editing experience. It supports C++20 or newer standards, ensuring compatibility with modern development practices.
-
-* `Commercial-Ready`: Cmdly is open-source and free for use in commercial projects, making it an ideal choice for both personal and business applications.
-
-* `Easy Integration`: Integration with existing projects is easy, thanks to its well-structured and adaptable design. You can seamlessly incorporate Cmdly into your software stack without extensive modifications.
-
-* `Simple API`: Cmdly exposes a robust API that helps developers to create and customize interfaces with ease. This API is designed to facilitate the development of feature-rich command-line interfaces for your applications.
-
-Cmdly empowers developers to build dynamic, customizable, command-line interfaces, ensuring a user-friendly and interactive experience for your software users.
+Cmdly is a lightweight C++20 library for building interactive command-line editors. It provides a Readline-inspired editing experience while keeping command parsing and execution in the host application. Cmdly targets POSIX terminals (Linux, macOS and similar systems) and can also read commands from pipes and redirected files.
 
 ## Features
-* key reading (ascii sequence codes) and key binding to function
-* line reading and line editing
-* history (in-memory or file-based) with incremental reverse search (CTRL+R)
-* basic auto-completion
-* event emitting such as key-pressed, line-changed, line-entered
-* support colorful prompt (text style, cursor style)
 
-## History Search
+- Interactive line editing with cursor navigation, word operations, and Emacs-style shortcuts.
+- UTF-8 input and display-width-aware rendering, including common combining-character and emoji sequences.
+- In-memory or file-backed command history with incremental reverse search (`Ctrl+R`).
+- Command-name completion with `Tab` (the built-in static provider completes the first token only).
+- Single-line bracketed paste, with a configurable input-size limit.
+- Configurable prompt, input text, and cursor styles.
+- Key-pressed, line-changed, and line-entered callbacks.
+- Automatic non-interactive input handling without raw mode, ANSI prompts, or terminal editing.
+- Explicit line-read results for accepted input, interruption, and EOF.
 
-Press `Ctrl+R` while editing a line to search command history from newest to oldest.
-Typing filters the history incrementally. Press `Ctrl+R` again for the next older match,
-`Backspace` to edit the search query, `Enter` to execute the selected command,
-or an arrow key to accept it for editing. Press `Esc`, `Ctrl+G` or `Ctrl+C`
-to cancel and restore the unfinished line. Search is enabled by default for every
-`Terminal` instance.
+Cmdly is distributed under the terms of the [LICENSE](LICENSE) file and can be integrated into commercial applications subject to those terms.
 
-## Planned Features 
-* word highlighting
-* some more default key-bindings (CTRL+B, CTRL+F, etc.)
-* support for internal environment variables
+## Requirements and build
 
-Something is missing here? Let me know!
+- C++20-compatible compiler.
+- CMake and a POSIX-like environment.
+- GoogleTest/GoogleMock when building the tests.
 
-## Building
 ```sh
-$ git clone https://github.com/lpodkalicki/cmdly.git
-$ cd cmdly
-$ mkdir build
-$ cd build
-$ cmake ../ -DBUILD_TESTING=1 -DBUILD_EXAMPLES=1
-$ make
+git clone https://github.com/lpodkalicki/cmdly.git
+cd cmdly
+cmake -S . -B build -DBUILD_TESTING=ON -DBUILD_EXAMPLES=ON
+cmake --build build
+ctest --test-dir build --output-on-failure
 ```
 
-## Key Reading Example
+## Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `Left` / `Right` | Move by one character cluster |
+| `Home` / `End` | Move to the beginning / end of the line |
+| `Ctrl+A` / `Ctrl+E` | Move to the beginning / end of the line |
+| `Ctrl+B` / `Ctrl+F` | Move backward / forward by one character cluster |
+| `Alt+B` / `Alt+F` | Move backward / forward by one word |
+| `Backspace` / `Delete` | Delete the previous / next character cluster |
+| `Ctrl+W` | Kill the previous word |
+| `Alt+D` | Kill the next word |
+| `Ctrl+U` / `Ctrl+K` | Kill from the cursor to the beginning / end of the line |
+| `Ctrl+Y` | Yank (restore) the most recently killed text |
+| `Ctrl+L` | Clear the screen and redraw the input line |
+| `Up` / `Down` | Navigate command history |
+| `Ctrl+R` | Incremental reverse history search |
+| `Tab` | Complete a command name |
+| `Enter` | Accept the current line |
+| `Ctrl+C` | Cancel the current line without adding it to history |
+| `Ctrl+D` | Signal EOF on an empty line; otherwise delete the next character |
+
+Consecutive kill commands accumulate their deleted text for `Ctrl+Y`. Word navigation treats ASCII letters, digits, underscores, and non-ASCII characters as word characters; punctuation acts as a separator.
+
+### History search
+
+Press `Ctrl+R` and type a substring to search from the newest history entry toward older entries. Press `Ctrl+R` again for the next match and `Backspace` to change the query. `Enter` accepts the current match; arrow keys can accept it for further editing. `Esc` or `Ctrl+G` cancels the search and restores the unfinished line. `Ctrl+C` interrupts the entire input line.
+
+## Basic usage
+
+`readLineWithStatus()` distinguishes an accepted line from `Ctrl+C` and EOF:
 
 ```cpp
-#include <iostream>
-#include <cmdly/io.h>
-
-using namespace cmdly;
-
-int main()
-{
-    std::cout << "Welcome to STDIO Reader!" << std::endl;
-    std::cout << "Press various key combinations to see result" << std::endl;
-    std::cout << "To quit press <CTRL+C>" << std::endl;
-
-    auto io = std::make_unique<StandardIO>();
-
-    for (;;)
-    {
-        auto key = io->getKey();
-        std::cout << key.info() << std::endl;
-        if (key == Key::Ctrl('c'))
-        {
-            break;
-        }
-    }
-
-    return 0;
-}
-```
-
-## Basic Terminal Example
-
-```cpp
-#include <memory>
 #include <iostream>
 #include <cmdly/terminal.h>
 
-using namespace cmdly;
-
 int main()
 {
-    std::cout << "Welcome to Basic Console!" << std::endl;
-    std::cout << "To quit type \"exit\" or press <CTRL+C>" << std::endl;
-
-    auto terminal = std::make_unique<Terminal>();
+    cmdly::Terminal terminal;
 
     for (;;)
     {
-        auto line = terminal->readLine("console> ");
-        std::cout << "line=" << line << std::endl;
-        if (line == "exit")
-        {
-            std::cout << "bye!" << std::endl;
-            break;
-        }
-    }
+        auto result = terminal.readLineWithStatus("console> ");
+        if (result.status == cmdly::Terminal::ReadLineStatus::EndOfFile) break;
+        if (result.status == cmdly::Terminal::ReadLineStatus::Interrupted) continue;
 
-    return 0;
+        if (result.text == "exit" || result.text == "quit") break;
+        std::cout << "command=" << result.text << '\n';
+    }
 }
 ```
 
-## More Advanced Example
+The older `readLine()` API remains available and returns only the input text. For a complete read status, prefer `readLineWithStatus()`.
+
+Alternatively, use `terminal.run("console> ")` and register line-entered listeners. The default terminal recognizes `exit`, `quit`, and `history`.
+
+## Completion and callbacks
 
 ```cpp
 #include <memory>
-#include <iostream>
 #include <cmdly/terminal.h>
-
-using namespace cmdly;
 
 int main()
 {
-    std::cout << "Welcome to Advanced Console!" << std::endl;
-    std::cout << "To quit type \"exit\" or press <CTRL+C>" << std::endl;
+    auto completion = std::make_shared<cmdly::Completion>();
+    auto terminal = std::make_unique<cmdly::Terminal>(
+        std::make_shared<cmdly::StandardIO>(),
+        std::make_shared<cmdly::MemoryHistory>(),
+        completion
+    );
 
-    auto io = std::make_shared<StandardIO>();
-    auto history = std::make_shared<MemoryHistory>();
-    auto completion = std::make_shared<Completion>();
-    auto terminal = std::make_unique<Terminal>(io, history, completion);
-
-    terminal->setPromptStyle(TextStyle(Color::Green));
-    terminal->setLineStyle(TextStyle(Color::Blue));
-    terminal->setCursorStyle(CursorStyle(RgbColor::Red));
-
-    terminal->onKeyPressed(Key::Ctrl('h'), [](const Key &, Line &line, Cursor &, Terminal &terminal) {
-        terminal.writeText("\nhello!\n", TextStyle(Color::Red));
-        line.update();
-        return KeyPressedListener::Status::CONTINUE;
-    });
-
-    terminal->onLineEntered([](const std::string &line, Terminal &terminal) {
-        if (line == "help")
+    completion->insert({"help", "status", "restart"});
+    terminal->onLineEntered([](const std::string &command, cmdly::Terminal &terminal) {
+        if (command == "help")
         {
-            terminal.writeText("Allowed commands:\n");
-            terminal.writeText("  help - show this help\n");
-            terminal.writeText("  exit - quit terminal\n ");
-            return LineEnteredListener::Status::CONTINUE;
+            terminal.writeText("Available commands: help, status, restart\n");
+            return cmdly::LineEnteredListener::Status::CONTINUE;
         }
-        return LineEnteredListener::Status::OK;
-    });
-    completion->insert("help");
-
-    terminal->onLineChanged([](const std::string &content, Line &line, Cursor &, Terminal &) {
-        if (content == "red")
-        {
-            line.setContentStyle(TextStyle(Color::Red));
-            line.update();
-        }
-        else if (content == "blue")
-        {
-            line.setContentStyle(TextStyle(Color::Blue));
-            line.update();
-        }
-        else if (content == "green")
-        {
-            line.setContentStyle(TextStyle(Color::Green));
-            line.update();
-        }
-        return LineChangedListener::Status::OK;
+        return cmdly::LineEnteredListener::Status::OK;
     });
 
     terminal->run("console> ");
-    terminal->resetStyle();
-
-    return 0;
 }
 ```
 
+The built-in `Completion` contains command names, not argument values. For example, `sta<Tab>` may complete to `status `, but pressing `Tab` after `status ` will not suggest command names again. Application-specific argument completion is not included in this static provider.
+
+## Persistent history
+
+```cpp
+auto history = std::make_shared<cmdly::FileHistory>(".cmdly_history", 500);
+history->load();
+
+auto terminal = std::make_unique<cmdly::Terminal>(
+    std::make_shared<cmdly::StandardIO>(), history
+);
+terminal->run("console> ");
+history->save();
+```
+
+`FileHistory::load()` accepts a missing file on first use. Read/write errors raise `cmdly::IOError`. Saving writes a temporary file in the same directory, synchronizes it, and renames it over the destination to avoid truncating existing history after a failed write.
+
+## Pipes and redirected input
+
+Cmdly automatically detects whether input and output are terminals. For non-interactive streams it reads newline-delimited commands without enabling raw mode or emitting prompts and ANSI editing sequences. A final line without a trailing newline is also accepted.
+
+```sh
+printf 'help\nexit\n' | ./build/examples/advanced_terminal
+./build/examples/advanced_terminal < commands.txt
+```
+
+The example applications display their welcome messages only when running interactively. If your application prints its own banner, check `io->isInteractive()` before printing it.
+
+## Input and terminal notes
+
+- `StandardIO` uses POSIX `termios`, `poll`, and terminal escape sequences for interactive editing.
+- Bracketed paste is sanitized to a single line. The default maximum accepted paste is 1 MiB; oversized pastes are discarded.
+- Unicode cluster handling covers common terminal cases, but is not a complete implementation of Unicode grapheme segmentation (UAX #29). Rendering can differ between terminal emulators.
+- `Ctrl+C` cancels the current edit in raw mode; it does not automatically terminate the application. `Ctrl+D` on an empty line or stream EOF ends `terminal.run()`.
+
+## Examples
+
+See [`examples/`](examples/) for `basic_terminal`, `advanced_terminal`, and `stdio_reader`.
