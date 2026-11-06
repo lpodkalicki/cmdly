@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <memory>
+#include <regex>
 #include <string>
 #include <cmdly/cursor.h>
 #include <cmdly/history.h>
@@ -705,7 +706,9 @@ TEST(HistorySearchRegression, AcceptMostRecentMatch)
     cmdly::Terminal terminal(io, history);
     EXPECT_EQ(terminal.readLine("console> "), "git push");
     EXPECT_NE(io->output().find("(reverse-i-search)`git': "), std::string::npos);
-    EXPECT_NE(io->output().find("git push"), std::string::npos);
+    // The highlighter inserts ANSI style codes between rendered tokens.
+    const auto visible_output = std::regex_replace(io->output(), std::regex("\033\\[[0-9;]*[A-Za-z]"), "");
+    EXPECT_NE(visible_output.find("git push"), std::string::npos);
 }
 
 TEST(HistorySearchRegression, RepeatSearchSelectsOlderMatch)
