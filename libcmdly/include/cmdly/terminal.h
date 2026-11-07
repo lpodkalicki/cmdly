@@ -92,7 +92,7 @@ protected:
     std::string kill_buffer_;
     bool last_kill_ = false;
     bool autosuggestions_enabled_ = true;
-    Highlighter highlighter_ = highlighters::pythonLike;
+    Highlighter highlighter_ = highlighters::none;
 
     void registerDefaultKeyListeners();
     void registerDefaultLineEnteredListeners();

@@ -25,7 +25,7 @@ int main()
     terminal->setLineStyle(TextStyle(Color::Blue));
     terminal->setCursorStyle(CursorStyle(RgbColor::Red));
     terminal->setAutosuggestionsEnabled(true);
-    terminal->setHighlighter(highlighters::pythonLike);
+    terminal->setHighlighter(highlighters::python);
 
     terminal->onKeyPressed(Key::Ctrl('h'), [](const Key &, Line &line, const Cursor &cursor, const Terminal &term)
     {

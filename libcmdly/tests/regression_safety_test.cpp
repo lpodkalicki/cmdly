@@ -431,10 +431,10 @@ TEST(TerminalRegression, EnterDoesNotRedrawPromptAfterNewline)
     EXPECT_EQ(io->output().back(), '\n');
 }
 
-TEST(HighlighterRegression, PythonLikeTokens)
+TEST(HighlighterRegression, PythonTokens)
 {
     const std::string input = "a = 1 b = \"123\" d::a = 0.12 maks() func(1, \"abc\", key=12, val=\"123\")";
-    const auto spans = cmdly::highlighters::pythonLike(input);
+    const auto spans = cmdly::highlighters::python(input);
     const auto hasSpan = [&](const std::string &token, const cmdly::TextStyle &style) {
         return std::any_of(spans.begin(), spans.end(), [&](const auto &span) {
             return input.substr(span.start, span.length) == token && span.style == style;
@@ -452,7 +452,7 @@ TEST(HighlighterRegression, PythonLikeTokens)
 
 TEST(HighlighterRegression, IncompleteStringAndFunction)
 {
-    const auto spans = cmdly::highlighters::pythonLike("func(\"unfinished");
+    const auto spans = cmdly::highlighters::python("func(\"unfinished");
     ASSERT_EQ(spans.size(), 2U);
     EXPECT_EQ(spans[0].start, 0U);
     EXPECT_EQ(spans[0].length, 4U);

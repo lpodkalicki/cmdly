@@ -25,7 +25,7 @@ public:
         std::size_t token_start;
         std::size_t token_end;
         std::string prefix;
-    };
+    }; /* End of struct Context */
 
     using ArgumentHandler = std::function<std::vector<std::string>(const Context&)>;
 
@@ -40,7 +40,7 @@ public:
             smallest_word_length(0), longest_word_length(0)
         {}
 
-        explicit SearchResult(std::vector<std::string> &words_,
+        explicit SearchResult(const std::vector<std::string> &words_,
                               std::size_t longest_word_length_,
                               std::string longest_common_prefix_) :
             words(words_),
@@ -58,7 +58,7 @@ public:
         {
             return words.empty();
         }
-    }; /* End of SearchResult */
+    }; /* End of struct SearchResult */
 
     Completion();
     void insert(const std::string &word);
@@ -75,10 +75,10 @@ protected:
     ArgumentHandler argument_handler_;
 
     static std::shared_ptr<SearchResult> searchCandidates(std::vector<std::string> candidates,
-                                                           const std::string &phrase);
+        const std::string &phrase);
 
     static void showSearchResult(Terminal &terminal, const std::shared_ptr<Completion::SearchResult>& result);
-}; /* End of Completion */
+}; /* End of class Completion */
 
 } /* End of namespace cmdly */
 
